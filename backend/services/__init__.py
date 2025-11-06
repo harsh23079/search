@@ -6,6 +6,9 @@ from .outfit_service import OutfitService
 from .color_service import ColorService
 from .data_ingestion import DataIngestionService
 from .text_search_service import TextSearchService, get_text_search_service
+from .instagram_scraper import InstagramScraper
+from .pinterest_scraper import PinterestScraper
+from .scraping_service import ScrapingService
 
 __all__ = [
     "FashionCLIPService",
@@ -18,5 +21,8 @@ __all__ = [
     "DataIngestionService",
     "TextSearchService",
     "get_text_search_service",
+    "InstagramScraper",
+    "PinterestScraper",
+    "ScrapingService",
 ]
 

@@ -179,3 +179,51 @@ class ErrorResponse(BaseModel):
     issues_detected: Optional[List[str]] = None
     suggestions: Optional[List[str]] = None
 
+
+# Scraping Schemas
+class ScrapeRequest(BaseModel):
+    """Request model for scraping social media posts."""
+    url: HttpUrl
+    post_limit: int = Field(default=50, ge=1, le=1000)
+    use_api: bool = True
+
+
+class ScrapedPost(BaseModel):
+    """Scraped post data."""
+    source: str
+    structured_data: Optional[Dict[str, Any]] = None
+    raw_data: Optional[Dict[str, Any]] = None
+    scraped_date: datetime
+    extraction_method: str
+
+
+class ScrapeResponse(BaseModel):
+    """Response model for scraping operation."""
+    success: bool
+    message: str
+    total_posts: int
+    posts: List[ScrapedPost]
+    url: str
+    platform: str
+    scraped_at: datetime
+    estimated_cost: Optional[float] = None
+
+
+class BatchScrapeRequest(BaseModel):
+    """Request model for batch scraping."""
+    urls: List[HttpUrl] = Field(..., min_items=1, max_items=50)
+    post_limit: int = Field(default=50, ge=1, le=1000)
+    use_api: bool = True
+
+
+class BatchScrapeResponse(BaseModel):
+    """Response model for batch scraping operation."""
+    success: bool
+    message: str
+    total_posts: int
+    posts: List[ScrapedPost]
+    urls_processed: int
+    urls_failed: int
+    errors: List[Dict[str, str]] = []
+    scraped_at: datetime
+    total_cost: Optional[float] = None

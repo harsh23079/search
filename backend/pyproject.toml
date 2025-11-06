@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
     "aiofiles>=25.1.0",
+    "apify-client>=1.9.0",
     "click>=8.3.0",
     "fastapi[standard]>=0.121.0",
     "httpx>=0.28.1",

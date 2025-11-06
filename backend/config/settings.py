@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     models_dir: str = "./models"
     log_dir: str = "./logs"
     
+    # Apify Configuration (for scraping)
+    apify_token: Optional[str] = None
+    apify_instagram_actor_id: str = "apify/instagram-scraper"
+    apify_pinterest_actor_id: str = "epctex/pinterest-scraper"
+    min_delay_between_requests: int = 2  # seconds
+    max_posts_per_request: int = 1000
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
