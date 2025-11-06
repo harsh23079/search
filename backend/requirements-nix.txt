@@ -1,0 +1,9 @@
+# Requirements for Nix devenv (Python venv)
+# Note: UV manages dependencies in pyproject.toml
+# This file is for devenv's Python venv if needed
+
+fastapi[standard]
+uvicorn[standard]
+pydantic
+pydantic-settings
+

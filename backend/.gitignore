@@ -1,0 +1,153 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Environment
+.env
+.env.local
+
+# Models
+models/*.pt
+models/*.pth
+models/*.onnx
+!models/.gitkeep
+
+# Uploads
+uploads/
+!uploads/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# UV
+.uv/
+.python-version
+
+# Devenv
+.devenv/
+
+# Cache
+.cache/
+*.cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Test images and temporary files
+examples/*.jpg
+examples/*.jpeg
+examples/*.png
+examples/*.webp
+examples/*.gif
+!examples/*.csv
+!examples/*.md
+
+# Model files (keep directory structure)
+models/**/*.pt
+models/**/*.pth
+models/**/*.onnx
+models/**/*.h5
+models/**/*.pb
+!models/.gitkeep
+!models/__init__.py
+
+# Uploads directory
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+logs/*
+*.log
+!logs/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Docker
+.dockerignore
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
