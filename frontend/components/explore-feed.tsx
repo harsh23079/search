@@ -43,7 +43,6 @@ export function ExploreFeed() {
         setAllProducts(results);
       }
       
-      // If we got fewer items than requested, we've reached the end
       if (results.length < ITEMS_PER_PAGE) {
         setHasMore(false);
       } else {
