@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { 
   getSavedPosts, SavedPost, getProxiedImageUrl,
-  getExtractedItemsForPost, getExtractedItemWithMatches,
-  ExtractedItem, SimilarProduct, deletePost
+  deletePost, searchSimilarImage
 } from "@/lib/api";
-import { Loader2, Instagram, Calendar, User, Heart, MessageCircle, Hash, ExternalLink, X, FileText, RefreshCw, Package, TrendingUp, Trash2 } from "lucide-react";
+import { Product } from "@/types/product";
+import { Loader2, Instagram, Calendar, User, Heart, MessageCircle, ExternalLink, X, FileText, RefreshCw, Trash2, Search, Package } from "lucide-react";
 import { ScrapedPost } from "@/lib/api";
+import { ProductCard } from "@/components/product-card";
 
 export default function PostsPage() {
   const [posts, setPosts] = useState<SavedPost[]>([]);
@@ -18,13 +19,15 @@ export default function PostsPage() {
   const [totalPosts, setTotalPosts] = useState(0);
   const postsPerPage = 20;
   
-  // Extracted items state
-  const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
-  const [extractedItemsLoading, setExtractedItemsLoading] = useState(false);
-  const [extractedItemsWithMatches, setExtractedItemsWithMatches] = useState<Map<string, SimilarProduct[]>>(new Map());
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  
+  // Search similar products state
+  const [searchingSimilar, setSearchingSimilar] = useState(false);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [showSimilarModal, setShowSimilarModal] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPosts();
@@ -280,44 +283,10 @@ export default function PostsPage() {
 
   const handleCardClick = async (postId: string) => {
     setSelectedPostId(postId);
-    setExtractedItems([]);
-    setExtractedItemsWithMatches(new Map());
-    
-    // Fetch extracted items for this post
-    setExtractedItemsLoading(true);
-    try {
-      const response = await getExtractedItemsForPost(postId);
-      setExtractedItems(response.items || []);
-      
-      // Fetch similar products for each extracted item
-      const matchesMap = new Map<string, SimilarProduct[]>();
-      for (const item of response.items || []) {
-        try {
-          const itemResponse = await getExtractedItemWithMatches(item.id);
-          if (itemResponse.matched_products && itemResponse.matched_products.length > 0) {
-            // Get top 5 similar products
-            const top5 = itemResponse.matched_products
-              .sort((a, b) => b.similarity_score - a.similarity_score)
-              .slice(0, 5);
-            matchesMap.set(item.id, top5);
-          }
-        } catch (err) {
-          console.error(`Error fetching matches for item ${item.id}:`, err);
-        }
-      }
-      setExtractedItemsWithMatches(matchesMap);
-    } catch (err: any) {
-      console.error(`Error fetching extracted items for post ${postId}:`, err);
-      setExtractedItems([]);
-    } finally {
-      setExtractedItemsLoading(false);
-    }
   };
 
   const handleCloseModal = () => {
     setSelectedPostId(null);
-    setExtractedItems([]);
-    setExtractedItemsWithMatches(new Map());
   };
 
   const handleOpenInstagram = (postUrl?: string | null) => {
@@ -356,6 +325,101 @@ export default function PostsPage() {
   const handleDeleteCancel = () => {
     setShowDeleteConfirm(false);
     setPostToDelete(null);
+  };
+
+  const handleFindSimilar = async (e: React.MouseEvent, post: SavedPost) => {
+    e.stopPropagation(); // Prevent card click
+    
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('[Find Similar] 🚀 STARTING: Button clicked for post:', post.id);
+    console.log('═══════════════════════════════════════════════════════════');
+    
+    setSearchingSimilar(true);
+    setSearchError(null);
+    setSimilarProducts([]);
+    
+    try {
+      // Step 1: Get image URL
+      const imageUrl = getPostImage(post);
+      console.log('[Find Similar] Step 1: Image URL extracted:', imageUrl);
+      
+      if (!imageUrl) {
+        console.error('[Find Similar] ❌ ERROR: No image URL found for post');
+        setSearchError("No image available for this post");
+        setSearchingSimilar(false);
+        return;
+      }
+
+      // Step 2: Get proxied URL
+      const proxiedUrl = getProxiedImageUrl(imageUrl);
+      console.log('[Find Similar] Step 2: Proxied URL:', proxiedUrl);
+      console.log('[Find Similar] Step 3: Fetching image from proxy...');
+
+      // Step 3: Fetch the image as Blob
+      const response = await fetch(proxiedUrl, { mode: "cors" });
+      console.log('[Find Similar] Step 3: Fetch response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+      
+      // Step 4: Convert to Blob
+      const blob = await response.blob();
+      console.log('[Find Similar] Step 4: Blob created:', {
+        size: blob.size,
+        type: blob.type,
+        sizeKB: (blob.size / 1024).toFixed(2) + ' KB'
+      });
+      
+      // Step 5: Create File from Blob (same as search-interface.tsx)
+      const file = new File([blob], `post-${post.id}.jpg`, { type: blob.type });
+      console.log('[Find Similar] Step 5: File created:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        sizeKB: (file.size / 1024).toFixed(2) + ' KB'
+      });
+
+      // Step 6: Call searchSimilarImage API (same as search-interface.tsx)
+      console.log('[Find Similar] Step 6: Calling searchSimilarImage() API...');
+      console.log('[Find Similar] File details (same as search-interface.tsx):', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        isFile: file instanceof File,
+        isBlob: file instanceof Blob
+      });
+      
+      const results = await searchSimilarImage(file, 20);
+      
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('[Find Similar] ✅ SEARCH SUCCESS! Results:', results.length);
+      console.log('═══════════════════════════════════════════════════════════');
+      
+      setSimilarProducts(results);
+      setShowSimilarModal(true);
+    } catch (err) {
+      console.error('[Find Similar] ❌ ERROR:', err);
+      console.error('[Find Similar] Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      const errorMessage = err instanceof Error ? err.message : 'Failed to search for similar products';
+      setSearchError(errorMessage);
+    } finally {
+      setSearchingSimilar(false);
+    }
+  };
+
+  const handleCloseSimilarModal = () => {
+    setShowSimilarModal(false);
+    setSimilarProducts([]);
+    setSearchError(null);
   };
 
   const totalPages = Math.ceil(totalPosts / postsPerPage);
@@ -513,9 +577,42 @@ export default function PostsPage() {
                         <p className="text-xs text-center">No image found</p>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm text-white pointer-events-auto">
-                        <span>View Details</span>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex flex-col items-center justify-center gap-2 pointer-events-none">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-2 pointer-events-auto">
+                        {/* Find Similar Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFindSimilar(e, savedPost);
+                          }}
+                          disabled={searchingSimilar}
+                          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Find similar products"
+                        >
+                          {searchingSimilar ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Search className="h-4 w-4" />
+                          )}
+                          <span>{searchingSimilar ? 'Searching...' : 'Find Similar'}</span>
+                        </button>
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(savedPost.id);
+                          }}
+                          disabled={deleting}
+                          className="flex items-center gap-2 rounded-lg bg-destructive/90 px-4 py-2 text-sm font-medium text-destructive-foreground shadow-lg transition-all hover:bg-destructive disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete post"
+                        >
+                          {deleting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          <span>{deleting ? 'Deleting...' : 'Delete'}</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -610,188 +707,99 @@ export default function PostsPage() {
             </div>
 
             <div className="flex h-full w-full flex-col gap-6 overflow-y-auto p-6 md:w-1/2">
-              <div className="space-y-2 border-b pb-4">
-                <h2 className="text-2xl font-bold">Extracted Items</h2>
-                <p className="text-sm text-muted-foreground">
-                  Fashion items extracted from this post
-                </p>
+              <div className="space-y-4">
+                {/* Post Caption */}
+                {modalData.caption && (
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-bold">Caption</h2>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{modalData.caption}</p>
+                  </div>
+                )}
+
+                {/* Post Stats */}
+                {(modalData.stats.likes !== null || modalData.stats.comments !== null) && (
+                  <div className="flex items-center gap-6 text-sm">
+                    {modalData.stats.likes !== null && (
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">{modalData.stats.likes.toLocaleString()} likes</span>
+                      </div>
+                    )}
+                    {modalData.stats.comments !== null && (
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">{modalData.stats.comments.toLocaleString()} comments</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Owner Info */}
+                {modalData.owner?.username && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground">@{modalData.owner.username}</span>
+                    {modalData.owner.fullName && (
+                      <span className="text-sm text-muted-foreground">({modalData.owner.fullName})</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Hashtags */}
+                {modalData.hashtags && modalData.hashtags.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-foreground">Hashtags</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {modalData.hashtags.map((tag, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-1 rounded bg-muted text-xs text-muted-foreground"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Comments */}
+                {modalData.comments && modalData.comments.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-foreground">Comments</h3>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {modalData.comments.slice(0, 5).map((comment, idx) => (
+                        <div key={idx} className="text-xs text-muted-foreground">
+                          {comment.username && <span className="font-medium">@{comment.username}: </span>}
+                          <span>{comment.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {extractedItemsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-3 text-muted-foreground">Loading extracted items...</span>
-                </div>
-              ) : extractedItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium text-foreground">No items extracted yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Extract items from this post to see similar products
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  {extractedItems.map((item) => {
-                    const similarProducts = extractedItemsWithMatches.get(item.id) || [];
-                    
-                    return (
-                      <div key={item.id} className="space-y-4 border-b pb-6 last:border-b-0">
-                        {/* Extracted Item Info */}
-                        <div className="space-y-3">
-                          {/* Extracted Item Image - Use post image or first similar product image */}
-                          <div className="relative w-full h-48 rounded-lg overflow-hidden bg-muted">
-                            {(() => {
-                              // Try to get image from first similar product
-                              const firstProduct = similarProducts[0];
-                              if (firstProduct?.product_info?.image_url) {
-                                return (
-                                  <img
-                                    src={getProxiedImageUrl(firstProduct.product_info.image_url)}
-                                    alt={item.item_name || item.category}
-                                    className="w-full h-full object-cover"
-                                  />
-                                );
-                              }
-                              // Fallback to post image
-                              if (modalData.imageUrl) {
-                                return (
-                                  <img
-                                    src={getProxiedImageUrl(modalData.imageUrl)}
-                                    alt={item.item_name || item.category}
-                                    className="w-full h-full object-cover"
-                                  />
-                                );
-                              }
-                              return (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Package className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-foreground">
-                              {item.item_name || item.category}
-                            </h3>
-                            {item.extraction_confidence && (
-                              <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                                {Math.round(item.extraction_confidence * 100)}% confidence
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                            {item.category && (
-                              <span className="px-2 py-1 rounded bg-muted">
-                                {item.category}
-                              </span>
-                            )}
-                            {item.subcategory && (
-                              <span className="px-2 py-1 rounded bg-muted">
-                                {item.subcategory}
-                              </span>
-                            )}
-                            {item.brand && (
-                              <span className="px-2 py-1 rounded bg-muted">
-                                {item.brand}
-                              </span>
-                            )}
-                          </div>
-                          
-                          {item.colors && item.colors.length > 0 && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">Colors:</span>
-                              <div className="flex gap-1">
-                                {item.colors.map((color, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="px-2 py-0.5 rounded text-xs bg-muted"
-                                  >
-                                    {color}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Similar Products */}
-                        {similarProducts.length > 0 ? (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              <TrendingUp className="h-4 w-4 text-primary" />
-                              <h4 className="text-sm font-semibold text-foreground">
-                                Similar Products ({similarProducts.length})
-                              </h4>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 gap-3">
-                              {similarProducts.map((product) => {
-                                const matchPercentage = Math.round(product.similarity_score * 100);
-                                
-                                return (
-                                  <div
-                                    key={product.product_id}
-                                    className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                                  >
-                                    {product.product_info.image_url ? (
-                                      <img
-                                        src={getProxiedImageUrl(product.product_info.image_url)}
-                                        alt={product.product_info.name}
-                                        className="w-16 h-16 object-cover rounded"
-                                      />
-                                    ) : (
-                                      <div className="w-16 h-16 bg-muted rounded flex items-center justify-center">
-                                        <Package className="h-6 w-6 text-muted-foreground" />
-                                      </div>
-                                    )}
-                                    
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm text-foreground truncate">
-                                        {product.product_info.name}
-                                      </p>
-                                      {product.product_info.brand && (
-                                        <p className="text-xs text-muted-foreground">
-                                          {product.product_info.brand}
-                                        </p>
-                                      )}
-                                      <p className="text-sm font-semibold text-primary mt-1">
-                                        {product.product_info.currency} {product.product_info.price.toLocaleString()}
-                                      </p>
-                                    </div>
-                                    
-                                    <div className="flex flex-col items-end gap-1">
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-lg font-bold text-primary">
-                                          {matchPercentage}%
-                                        </span>
-                                        <TrendingUp className="h-4 w-4 text-primary" />
-                                      </div>
-                                      <span className="text-xs text-muted-foreground">Match</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">
-                            No similar products found
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
               <div className="mt-auto flex gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (selectedPost) {
+                      handleFindSimilar(e, selectedPost);
+                    }
+                  }}
+                  disabled={searchingSimilar}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {searchingSimilar ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Search className="h-5 w-5" />
+                  )}
+                  <span>{searchingSimilar ? 'Searching...' : 'Find Similar'}</span>
+                </button>
                 {modalData.postUrl && (
                   <button
                     onClick={() => handleOpenInstagram(modalData.postUrl)}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-border px-6 py-3 font-medium text-foreground transition-colors hover:bg-accent"
                   >
                     <ExternalLink className="h-5 w-5" />
                     <span>View on Instagram</span>
@@ -847,7 +855,7 @@ export default function PostsPage() {
               </div>
 
               <p className="text-sm text-foreground mb-6">
-                Are you sure you want to delete this post? This will also delete all extracted items for this post.
+                Do you really want to delete this post? This action cannot be undone.
               </p>
 
               {/* Actions */}
@@ -874,6 +882,67 @@ export default function PostsPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Similar Products Modal */}
+      {showSimilarModal && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
+          onClick={handleCloseSimilarModal}
+        >
+          <div
+            className="relative w-full max-w-6xl max-h-[90vh] rounded-lg bg-background shadow-2xl border border-border overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-2xl font-bold">Similar Products</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Found {similarProducts.length} similar products
+                </p>
+              </div>
+              <button
+                onClick={handleCloseSimilarModal}
+                className="rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-muted/80"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {searchError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <X className="h-12 w-12 text-destructive mb-4" />
+                  <p className="text-lg font-medium text-foreground">Search Error</p>
+                  <p className="text-sm text-muted-foreground mt-2">{searchError}</p>
+                  <button
+                    onClick={handleCloseSimilarModal}
+                    className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : similarProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-foreground">No similar products found</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Try searching with a different image
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {similarProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
