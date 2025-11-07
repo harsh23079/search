@@ -227,3 +227,53 @@ class BatchScrapeResponse(BaseModel):
     errors: List[Dict[str, str]] = []
     scraped_at: datetime
     total_cost: Optional[float] = None
+
+
+# Instagram Post Retrieval Schemas
+class InstagramPostMinimalSchema(BaseModel):
+    """Minimal Instagram post schema for list views."""
+    id: str
+    type: Optional[str] = None
+    url: Optional[str] = None
+    display_url: Optional[str] = None
+    caption: Optional[str] = None
+    likes_count: int = 0
+    comments_count: int = 0
+    timestamp: Optional[datetime] = None
+    owner_username: Optional[str] = None
+    owner_full_name: Optional[str] = None
+    scraped_date: datetime
+
+
+class PaginationMeta(BaseModel):
+    """Pagination metadata."""
+    current_page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
+
+
+class InstagramPostPaginationRequest(BaseModel):
+    """Request model for paginated Instagram posts."""
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+    owner_username: Optional[str] = None
+    sort_by: str = Field(default="scraped_date")  # scraped_date, timestamp, likes, comments
+    sort_order: str = Field(default="desc")  # asc, desc
+
+
+class InstagramPostPaginatedResponse(BaseModel):
+    """Paginated response for Instagram posts."""
+    success: bool
+    message: str
+    posts: List[InstagramPostMinimalSchema]
+    pagination: PaginationMeta
+
+
+class InstagramPostDetailResponse(BaseModel):
+    """Detailed Instagram post response."""
+    success: bool
+    message: str
+    post: Dict[str, Any]

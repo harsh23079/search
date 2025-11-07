@@ -374,3 +374,58 @@ export function getProxiedImageUrl(imageUrl: string): string {
   return `${BASE_URL}/products/image-proxy?url=${encodeURIComponent(imageUrl)}`;
 }
 
+// Get saved scraped posts
+// Backend can return either flat structure (from DB) or nested structure (from file storage)
+export interface SavedPost {
+  id: string;
+  platform?: string;
+  source_url?: string;
+  scraped_at?: string;
+  scraped_date?: string;
+  post_data?: ScrapedPost;
+  // Flat structure fields (from database)
+  display_url?: string;
+  images?: string[];
+  caption?: string;
+  owner_username?: string;
+  owner_full_name?: string;
+  likes_count?: number;
+  comments_count?: number;
+  url?: string;
+  short_code?: string;
+  hashtags?: string[];
+  raw_data?: any;
+}
+
+export interface SavedPostsResponse {
+  success: boolean;
+  posts: SavedPost[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function getSavedPosts(
+  limit: number = 20,
+  offset: number = 0,
+  platform?: string
+): Promise<SavedPostsResponse> {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  });
+  
+  if (platform) {
+    params.append('platform', platform);
+  }
+
+  const response = await fetch(`${BASE_URL}/scraped-posts?${params.toString()}`);
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to fetch saved posts: ${error}`);
+  }
+
+  return response.json();
+}
+

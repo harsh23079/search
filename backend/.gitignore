@@ -75,6 +75,7 @@ Thumbs.db
 .ruff_cache/
 .hypothesis/
 cache/
+data/
 
 # Jupyter Notebook
 .ipynb_checkpoints

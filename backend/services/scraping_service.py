@@ -4,9 +4,11 @@ import re
 from fastapi import HTTPException, status
 from datetime import datetime
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.instagram_scraper import InstagramScraper
 from services.pinterest_scraper import PinterestScraper
+from services.post_storage import get_post_storage
 from models.schemas import ScrapeRequest, ScrapeResponse, ScrapedPost, BatchScrapeRequest, BatchScrapeResponse
 from config import settings
 
@@ -14,9 +16,10 @@ from config import settings
 class ScrapingService:
     """Service for scraping social media posts."""
     
-    def __init__(self):
+    def __init__(self, db_session: Optional[AsyncSession] = None):
         logger.info("Initializing Instagram and Pinterest scrapers")
-        self.instagram_scraper = InstagramScraper()
+        self.db_session = db_session
+        self.instagram_scraper = InstagramScraper(db_session)
         self.pinterest_scraper = PinterestScraper()
         logger.info("Scrapers initialized successfully")
     
@@ -50,7 +53,21 @@ class ScrapingService:
             
             # Convert to Pydantic models
             scraped_posts = [ScrapedPost(**post) for post in posts_data]
-            
+
+            # Save to storage if requested
+            if save_to_db:
+                try:
+                    post_storage = get_post_storage()
+                    saved_count = post_storage.save_posts(
+                        posts=posts_data,
+                        source_url=str(request.url),
+                        platform=platform
+                    )
+                    if saved_count > 0:
+                        logger.info(f"Saved {saved_count} posts to storage")
+                except Exception as e:
+                    logger.error(f"Failed to save posts to storage: {e}")
+
             response = ScrapeResponse(
                 success=True,
                 message=f"Successfully scraped {len(scraped_posts)} posts from {platform}",

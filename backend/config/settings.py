@@ -2,6 +2,8 @@
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
+from pathlib import Path
+from loguru import logger
 
 
 class Settings(BaseSettings):
@@ -46,17 +48,35 @@ class Settings(BaseSettings):
     min_delay_between_requests: int = 2  # seconds
     max_posts_per_request: int = 1000
     
+    # Post Storage
+    scraped_posts_storage_file: str = "./data/scraped_posts.json"
+    
+    # Database Configuration
+    database_url: Optional[str] = None  # e.g., postgresql+asyncpg://user:pass@localhost/dbname
+    # If not set, will use SQLite as fallback
+    
     class Config:
-        env_file = ".env"
+        # Use absolute path to .env file in backend directory
+        env_file = str(Path(__file__).parent.parent / ".env")
         case_sensitive = False
 
 
 # Create settings instance
 settings = Settings()
 
+# Debug: Log if Apify token is loaded (without exposing the full token)
+if settings.apify_token:
+    logger.info(f"Apify token loaded: {settings.apify_token[:10]}...{settings.apify_token[-4:] if len(settings.apify_token) > 14 else '***'}")
+else:
+    logger.warning("Apify token not found in environment. Instagram scraping will not work.")
+
 # Ensure directories exist
 os.makedirs(settings.upload_dir, exist_ok=True)
 os.makedirs(settings.models_dir, exist_ok=True)
 os.makedirs(settings.log_dir, exist_ok=True)
 os.makedirs(settings.image_cache_dir, exist_ok=True)
+# Ensure data directory exists for scraped posts storage
+data_dir = os.path.dirname(settings.scraped_posts_storage_file)
+if data_dir:  # Only create if there's a directory path
+    os.makedirs(data_dir, exist_ok=True)
 

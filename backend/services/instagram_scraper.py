@@ -5,13 +5,14 @@ import asyncio
 from datetime import datetime
 from fastapi import HTTPException, status
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 
 
 class InstagramScraper:
     """Instagram scraper using Apify."""
     
-    def __init__(self):
+    def __init__(self, db_session: Optional[AsyncSession] = None):
         if not settings.apify_token:
             logger.warning("APIFY_TOKEN not set. Instagram scraping will not work.")
             self.client = None
@@ -20,6 +21,7 @@ class InstagramScraper:
         self.actor_id = settings.apify_instagram_actor_id
         self.min_delay = settings.min_delay_between_requests
         self.last_request_time = None
+        self.db_session = db_session
         
     async def scrape_profile_posts(
         self, 
@@ -73,6 +75,17 @@ class InstagramScraper:
                 
                 if len(scraped_data) >= post_limit:
                     break
+            
+            # Save to database if requested
+            if save_to_db and self.db_session:
+                try:
+                    from repositories.instagram_post_repository import InstagramPostRepository
+                    repository = InstagramPostRepository(self.db_session)
+                    saved_count = await repository.save_batch_posts(scraped_data)
+                    logger.info(f"Saved {saved_count} posts to database")
+                except Exception as e:
+                    logger.error(f"Error saving posts to database: {e}")
+                    # Continue even if database save fails
             
             logger.info(f"Successfully scraped {len(scraped_data)} posts")
             return scraped_data
@@ -136,6 +149,17 @@ class InstagramScraper:
                 
                 if len(scraped_data) >= post_limit:
                     break
+            
+            # Save to database if requested
+            if save_to_db and self.db_session:
+                try:
+                    from repositories.instagram_post_repository import InstagramPostRepository
+                    repository = InstagramPostRepository(self.db_session)
+                    saved_count = await repository.save_batch_posts(scraped_data)
+                    logger.info(f"Saved {saved_count} posts to database")
+                except Exception as e:
+                    logger.error(f"Error saving posts to database: {e}")
+                    # Continue even if database save fails
             
             logger.info(f"Successfully scraped {len(scraped_data)} posts")
             return scraped_data

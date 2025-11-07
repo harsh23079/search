@@ -51,6 +51,14 @@ async def startup_event():
     logger.info("Starting Fashion AI System...")
     logger.info(f"API running on http://{settings.api_host}:{settings.api_port}")
     
+    # Initialize database
+    try:
+        from config.database import init_db
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.warning(f"Database initialization warning: {e}")
+    
     # Clean up expired image cache on startup
     try:
         from services.image_cache import get_image_cache
