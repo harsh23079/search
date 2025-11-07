@@ -20,6 +20,7 @@ from services import (
     VectorDBService, OutfitService, ColorService,
     get_text_search_service
 )
+from services.image_cache import get_image_cache
 
 router = APIRouter()
 
@@ -437,7 +438,8 @@ async def proxy_product_image(url: str = Query(..., description="Image URL to pr
     Proxy image from external URL to bypass CORS restrictions.
     
     This endpoint fetches images from external sources and serves them
-    through the backend to avoid CORS issues. Used by PostsGallery and other components.
+    through the backend to avoid CORS issues. Images are cached locally
+    for 5 minutes to handle expiring Instagram CDN URLs.
     """
     try:
         logger.info(f"Product image proxy request for URL: {url[:100]}...")
@@ -447,7 +449,29 @@ async def proxy_product_image(url: str = Query(..., description="Image URL to pr
             logger.error(f"Invalid URL format: {url}")
             raise HTTPException(status_code=400, detail="Invalid URL format")
         
-        # Fetch image with timeout and browser-like headers
+        # Check cache first
+        image_cache = get_image_cache()
+        cached_result = image_cache.get(url)
+        
+        if cached_result:
+            image_bytes, content_type = cached_result
+            logger.info(f"Serving cached image for {url[:100]}... ({len(image_bytes)} bytes)")
+            return Response(
+                content=image_bytes,
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=300",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Expose-Headers": "*",
+                    "Content-Length": str(len(image_bytes)),
+                    "X-Cache": "HIT",
+                }
+            )
+        
+        # Cache miss - fetch from source
+        logger.info(f"Cache miss, fetching product image from: {url[:100]}...")
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
@@ -456,7 +480,6 @@ async def proxy_product_image(url: str = Query(..., description="Image URL to pr
             "Accept-Encoding": "gzip, deflate, br",
         }
         
-        logger.info(f"Fetching product image from: {url[:100]}...")
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -472,20 +495,26 @@ async def proxy_product_image(url: str = Query(..., description="Image URL to pr
                 logger.error("Empty image content received")
                 raise HTTPException(status_code=502, detail="Empty image content received")
             
-            content_length = len(response.content)
-            logger.info(f"Successfully fetched product image: {content_length} bytes, content-type: {content_type}")
+            image_bytes = response.content
+            content_length = len(image_bytes)
+            
+            # Cache the image for future requests
+            image_cache.set(url, image_bytes, content_type)
+            
+            logger.info(f"Successfully fetched and cached product image: {content_length} bytes, content-type: {content_type}")
             
             # Return image with appropriate headers
             return Response(
-                content=response.content,
+                content=image_bytes,
                 media_type=content_type,
                 headers={
-                    "Cache-Control": "public, max-age=3600",
+                    "Cache-Control": "public, max-age=300",
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Methods": "GET, OPTIONS",
                     "Access-Control-Allow-Headers": "*",
                     "Access-Control-Expose-Headers": "*",
                     "Content-Length": str(content_length),
+                    "X-Cache": "MISS",
                 }
             )
     

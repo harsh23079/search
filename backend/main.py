@@ -51,6 +51,16 @@ async def startup_event():
     logger.info("Starting Fashion AI System...")
     logger.info(f"API running on http://{settings.api_host}:{settings.api_port}")
     
+    # Clean up expired image cache on startup
+    try:
+        from services.image_cache import get_image_cache
+        image_cache = get_image_cache()
+        deleted = image_cache.cleanup_expired()
+        if deleted > 0:
+            logger.info(f"Cleaned up {deleted} expired cached images on startup")
+    except Exception as e:
+        logger.warning(f"Image cache cleanup warning: {e}")
+    
     # Initialize services (lazy loading will happen on first request)
     try:
         from services import get_embedding_service, get_detection_service

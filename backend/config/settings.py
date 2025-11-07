@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     models_dir: str = "./models"
     log_dir: str = "./logs"
+    image_cache_dir: str = "./cache/images"
+    
+    # Image Cache Settings
+    image_cache_ttl_seconds: int = 300  # 5 minutes default
     
     # Apify Configuration (for scraping)
     apify_token: Optional[str] = None
@@ -54,4 +58,5 @@ settings = Settings()
 os.makedirs(settings.upload_dir, exist_ok=True)
 os.makedirs(settings.models_dir, exist_ok=True)
 os.makedirs(settings.log_dir, exist_ok=True)
+os.makedirs(settings.image_cache_dir, exist_ok=True)
 
