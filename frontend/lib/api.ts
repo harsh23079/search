@@ -267,3 +267,110 @@ export async function checkColorHarmony(colors: string[]): Promise<any> {
   return response.json();
 }
 
+// Instagram/Pinterest scraping types
+export interface ScrapeRequest {
+  url: string;
+  post_limit?: number;
+  use_api?: boolean;
+}
+
+export interface BatchScrapeRequest {
+  urls: string[];
+  post_limit?: number;
+  use_api?: boolean;
+}
+
+export interface ScrapedPost {
+  source: string;
+  structured_data?: any;
+  raw_data?: any;
+  scraped_date: string;
+  extraction_method: string;
+}
+
+export interface ScrapeResponse {
+  success: boolean;
+  message: string;
+  total_posts: number;
+  posts: ScrapedPost[];
+  url: string;
+  platform: string;
+  scraped_at: string;
+  estimated_cost?: number;
+}
+
+export interface BatchScrapeResponse {
+  success: boolean;
+  message: string;
+  total_posts: number;
+  posts: ScrapedPost[];
+  urls_processed: number;
+  urls_failed: number;
+  errors: Array<{ url: string; error: string }>;
+  scraped_at: string;
+  total_cost?: number;
+}
+
+// Scrape single URL (Instagram or Pinterest)
+export async function scrapeSocialMedia(
+  request: ScrapeRequest,
+  saveToDb: boolean = false
+): Promise<ScrapeResponse> {
+  const response = await fetch(`${BASE_URL}/scrape?save_to_db=${saveToDb}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      url: request.url,
+      post_limit: request.post_limit || 50,
+      use_api: request.use_api !== false,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Scraping failed: ${error}`);
+  }
+
+  return response.json();
+}
+
+// Batch scrape multiple URLs
+export async function batchScrapeSocialMedia(
+  request: BatchScrapeRequest,
+  saveToDb: boolean = false
+): Promise<BatchScrapeResponse> {
+  const response = await fetch(`${BASE_URL}/scrape/batch?save_to_db=${saveToDb}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      urls: request.urls,
+      post_limit: request.post_limit || 50,
+      use_api: request.use_api !== false,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Batch scraping failed: ${error}`);
+  }
+
+  return response.json();
+}
+
+// Proxy image URL through backend to bypass CORS
+// Uses the same endpoint as PostsGallery for consistency
+export function getProxiedImageUrl(imageUrl: string): string {
+  if (!imageUrl) return imageUrl;
+  // If it's already a relative URL or data URL, return as-is
+  if (imageUrl.startsWith('/') || imageUrl.startsWith('data:')) {
+    return imageUrl;
+  }
+  // Use the same endpoint pattern as PostsGallery: /products/image-proxy
+  // BASE_URL is already /api/v1, so this becomes /api/v1/products/image-proxy
+  return `${BASE_URL}/products/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+}
+

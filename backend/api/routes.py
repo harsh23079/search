@@ -1,6 +1,6 @@
 """FastAPI routes for fashion AI system."""
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Body
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 from typing import Optional, List
 from PIL import Image
 import io
@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from loguru import logger
 from pydantic import BaseModel
+import httpx
 
 from models.schemas import (
     DetectionResponse, SearchResponse, OutfitResponse,
@@ -428,6 +429,77 @@ async def get_product(product_id: str):
     except Exception as e:
         logger.error(f"Error getting product {product_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error retrieving product: {str(e)}")
+
+
+@router.get("/products/image-proxy")
+async def proxy_product_image(url: str = Query(..., description="Image URL to proxy")):
+    """
+    Proxy image from external URL to bypass CORS restrictions.
+    
+    This endpoint fetches images from external sources and serves them
+    through the backend to avoid CORS issues. Used by PostsGallery and other components.
+    """
+    try:
+        logger.info(f"Product image proxy request for URL: {url[:100]}...")
+        
+        # Validate URL
+        if not url or not url.startswith(("http://", "https://")):
+            logger.error(f"Invalid URL format: {url}")
+            raise HTTPException(status_code=400, detail="Invalid URL format")
+        
+        # Fetch image with timeout and browser-like headers
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.instagram.com/",
+            "Accept-Encoding": "gzip, deflate, br",
+        }
+        
+        logger.info(f"Fetching product image from: {url[:100]}...")
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            
+            # Get content type - ensure it's a valid image type
+            content_type = response.headers.get("content-type", "image/jpeg")
+            # Clean content type (remove charset if present)
+            if ";" in content_type:
+                content_type = content_type.split(";")[0].strip()
+            
+            # Ensure we have valid image content
+            if not response.content:
+                logger.error("Empty image content received")
+                raise HTTPException(status_code=502, detail="Empty image content received")
+            
+            content_length = len(response.content)
+            logger.info(f"Successfully fetched product image: {content_length} bytes, content-type: {content_type}")
+            
+            # Return image with appropriate headers
+            return Response(
+                content=response.content,
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=3600",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Expose-Headers": "*",
+                    "Content-Length": str(content_length),
+                }
+            )
+    
+    except httpx.TimeoutException:
+        logger.error(f"Timeout fetching product image: {url[:100]}")
+        raise HTTPException(status_code=504, detail="Image fetch timeout")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error fetching product image: {e.response.status_code} - {url[:100]}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"Failed to fetch image: HTTP {e.response.status_code}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error proxying product image: {str(e)} - URL: {url[:100]}")
+        raise HTTPException(status_code=500, detail=f"Error proxying image: {str(e)}")
 
 
 @router.get("/health")

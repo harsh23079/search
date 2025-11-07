@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Moon, Sun, Search, Home, ShoppingCart } from "lucide-react";
+import { Moon, Sun, Search, Home, ShoppingCart, Instagram } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCart } from "@/contexts/cart-context";
 
@@ -37,6 +37,13 @@ export function Navigation() {
           >
             <Search className="h-4 w-4" />
             <span>Search</span>
+          </Link>
+          <Link
+            href="/scrape"
+            className="flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary"
+          >
+            <Instagram className="h-4 w-4" />
+            <span>Scrape</span>
           </Link>
 
           <Link
