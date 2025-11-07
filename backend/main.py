@@ -8,6 +8,7 @@ from config import settings
 from api.routes import router
 from api.routes_ingest import router as ingest_router
 from api.routes_scraping import router as scraping_router
+from api.routes_extraction import router as extraction_router
 
 # Configure logging
 logger.remove()
@@ -43,6 +44,7 @@ app.add_middleware(
 app.include_router(router, prefix="/api/v1", tags=["fashion-ai"])
 app.include_router(ingest_router, prefix="/api/v1", tags=["ingestion"])
 app.include_router(scraping_router, prefix="/api/v1", tags=["scraping"])
+app.include_router(extraction_router, prefix="/api/v1", tags=["extraction"])
 
 
 @app.on_event("startup")

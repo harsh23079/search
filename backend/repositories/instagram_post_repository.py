@@ -140,6 +140,26 @@ class InstagramPostRepository:
         # This can be extended to check if post has related products
         return False
     
+    async def delete_post(self, post_id: str) -> bool:
+        """Delete an Instagram post by ID."""
+        try:
+            result = await self.db.execute(
+                select(InstagramPost).where(InstagramPost.id == post_id)
+            )
+            post = result.scalar_one_or_none()
+            
+            if not post:
+                return False
+            
+            await self.db.delete(post)
+            await self.db.commit()
+            logger.info(f"Deleted post: {post_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting post {post_id}: {e}")
+            await self.db.rollback()
+            return False
+    
     def _create_post_from_data(self, post_id: str, post_data: dict) -> InstagramPost:
         """Create InstagramPost model from scraped data."""
         structured = post_data.get("structured_data") or {}

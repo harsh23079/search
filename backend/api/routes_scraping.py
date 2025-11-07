@@ -14,7 +14,6 @@ from models.schemas import (
 )
 from services.scraping_service import ScrapingService
 from services.image_cache import get_image_cache
-from services.post_storage import get_post_storage
 from config.database import get_db
 from repositories.instagram_post_repository import InstagramPostRepository
 
@@ -195,25 +194,36 @@ async def proxy_image(url: str = Query(..., description="Image URL to proxy")):
 async def get_saved_posts(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    platform: Optional[str] = Query(None, description="Filter by platform (instagram, pinterest)")
+    platform: Optional[str] = Query(None, description="Filter by platform (instagram, pinterest)"),
+    db: AsyncSession = Depends(get_db)
 ):
-    """Get saved scraped posts from file storage."""
+    """Get saved scraped posts from database."""
     try:
-        post_storage = get_post_storage()
+        repository = InstagramPostRepository(db)
         
-        logger.info(f"Fetching posts: offset={offset}, limit={limit}, platform={platform}")
+        # Calculate page from offset and limit
+        page = (offset // limit) + 1
+        page_size = limit
         
-        posts, total = post_storage.get_posts(
-            limit=limit,
-            offset=offset,
-            platform=platform
+        logger.info(f"Fetching posts: page={page}, page_size={page_size}, offset={offset}, limit={limit}")
+        
+        # Get posts from database
+        posts, total = await repository.get_posts_paginated(
+            page=page,
+            page_size=page_size,
+            owner_username=None,  # Can add platform filter later if needed
+            sort_by="scraped_date",
+            sort_order="desc"
         )
         
         logger.info(f"Retrieved {len(posts)} posts, total={total}")
         
+        # Convert to dict format
+        post_list = [post.to_dict() for post in posts]
+        
         return {
             "success": True,
-            "posts": posts,
+            "posts": post_list,
             "total": total,
             "limit": limit,
             "offset": offset,
@@ -225,19 +235,20 @@ async def get_saved_posts(
 
 @router.get("/scraped-posts/{post_id}", tags=["scraping"])
 async def get_saved_post(
-    post_id: str
+    post_id: str,
+    db: AsyncSession = Depends(get_db)
 ):
-    """Get a single saved post by ID from file storage."""
+    """Get a single saved post by ID from database."""
     try:
-        post_storage = get_post_storage()
-        post = post_storage.get_post_by_id(post_id)
+        repository = InstagramPostRepository(db)
+        post = await repository.get_post_by_id(post_id)
         
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
         
         return {
             "success": True,
-            "post": post,
+            "post": post.to_dict(),
         }
     except HTTPException:
         raise
@@ -355,5 +366,58 @@ async def get_instagram_post(
         raise HTTPException(
             status_code=500,
             detail=f"Error fetching post: {str(e)}"
+        )
+
+
+@router.delete("/posts/{post_id}", tags=["scraping"])
+async def delete_instagram_post(
+    post_id: str,
+    delete_extracted_items: bool = Query(default=True, description="Also delete extracted items for this post"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete an Instagram post and optionally its extracted items.
+    """
+    try:
+        repository = InstagramPostRepository(db)
+        post = await repository.get_post_by_id(post_id)
+        
+        if not post:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Instagram post not found with ID: {post_id}"
+            )
+        
+        # Delete extracted items if requested
+        deleted_items_count = 0
+        if delete_extracted_items:
+            from repositories.extracted_item_repository import ExtractedItemRepository
+            item_repo = ExtractedItemRepository(db)
+            deleted_items_count = await item_repo.delete_items_by_post_id(post_id)
+            logger.info(f"Deleted {deleted_items_count} extracted items for post {post_id}")
+        
+        # Delete the post
+        deleted = await repository.delete_post(post_id)
+        
+        if not deleted:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete post {post_id}"
+            )
+        
+        return {
+            "success": True,
+            "message": f"Post {post_id} deleted successfully",
+            "post_id": post_id,
+            "deleted_extracted_items": deleted_items_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting post: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting post: {str(e)}"
         )
 

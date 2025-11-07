@@ -429,3 +429,95 @@ export async function getSavedPosts(
   return response.json();
 }
 
+// Extracted Items Types
+export interface ExtractedItem {
+  id: string;
+  instagram_post_id: string;
+  category: string;
+  subcategory?: string;
+  colors?: string[];
+  style_tags?: string[];
+  pattern?: string;
+  material?: string;
+  brand?: string;
+  item_name?: string;
+  keywords?: string[];
+  detection_confidence?: number;
+  extraction_confidence?: number;
+  best_match_product_id?: string;
+  best_match_score?: number;
+  extraction_method?: string;
+  extraction_date: string;
+}
+
+export interface ProductInfo {
+  product_id: string;
+  name: string;
+  brand?: string;
+  price: number;
+  currency: string;
+  image_url?: string;
+  in_stock: boolean;
+}
+
+export interface SimilarProduct {
+  product_id: string;
+  similarity_score: number;
+  product_info: ProductInfo;
+  match_reasoning: string;
+  key_similarities: string[];
+}
+
+export interface ExtractedItemsResponse {
+  success: boolean;
+  message: string;
+  post_id: string;
+  items: ExtractedItem[];
+  total: number;
+}
+
+export interface ExtractedItemWithMatchesResponse {
+  success: boolean;
+  message: string;
+  item: ExtractedItem;
+  matched_products?: SimilarProduct[];
+}
+
+// Get extracted items for a post
+export async function getExtractedItemsForPost(postId: string): Promise<ExtractedItemsResponse> {
+  const response = await fetch(`${BASE_URL}/extracted-items/post/${postId}`);
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to fetch extracted items: ${error}`);
+  }
+
+  return response.json();
+}
+
+// Get extracted item with similar products
+export async function getExtractedItemWithMatches(itemId: string): Promise<ExtractedItemWithMatchesResponse> {
+  const response = await fetch(`${BASE_URL}/extracted-items/${itemId}?include_matches=true`);
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to fetch extracted item: ${error}`);
+  }
+
+  return response.json();
+}
+
+// Delete Instagram post
+export async function deletePost(postId: string, deleteExtractedItems: boolean = true): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${BASE_URL}/posts/${postId}?delete_extracted_items=${deleteExtractedItems}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to delete post: ${error}`);
+  }
+
+  return response.json();
+}
+

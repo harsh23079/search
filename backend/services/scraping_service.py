@@ -58,15 +58,19 @@ class ScrapingService:
             if save_to_db:
                 try:
                     post_storage = get_post_storage()
+                    logger.info(f"Attempting to save {len(posts_data)} posts to storage")
                     saved_count = post_storage.save_posts(
                         posts=posts_data,
                         source_url=str(request.url),
                         platform=platform
                     )
                     if saved_count > 0:
-                        logger.info(f"Saved {saved_count} posts to storage")
+                        logger.info(f"Successfully saved {saved_count} posts to storage")
+                    else:
+                        logger.warning(f"Failed to save posts to storage: saved_count is 0")
                 except Exception as e:
-                    logger.error(f"Failed to save posts to storage: {e}")
+                    logger.error(f"Failed to save posts to storage: {e}", exc_info=True)
+                    # Don't fail the entire request if storage save fails
 
             response = ScrapeResponse(
                 success=True,

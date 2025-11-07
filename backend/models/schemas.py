@@ -277,3 +277,53 @@ class InstagramPostDetailResponse(BaseModel):
     success: bool
     message: str
     post: Dict[str, Any]
+
+
+# Semantic Extraction Schemas
+class ExtractedItemSchema(BaseModel):
+    """Extracted fashion item schema."""
+    id: str
+    instagram_post_id: str
+    category: str
+    subcategory: Optional[str] = None
+    colors: Optional[List[str]] = None
+    style_tags: Optional[List[str]] = None
+    pattern: Optional[str] = None
+    material: Optional[str] = None
+    brand: Optional[str] = None
+    item_name: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    detection_confidence: Optional[float] = None
+    extraction_confidence: Optional[float] = None
+    best_match_product_id: Optional[str] = None
+    best_match_score: Optional[float] = None
+    extraction_method: Optional[str] = None
+    extraction_date: datetime
+    image_url: Optional[str] = None
+    post_display_url: Optional[str] = None
+
+
+class ExtractionResponse(BaseModel):
+    """Response from extraction operation."""
+    success: bool
+    message: str
+    post_id: str
+    items_extracted: int
+    items: List[ExtractedItemSchema]
+    processing_time_ms: Optional[float] = None
+
+
+class ExtractedItemsPaginatedResponse(BaseModel):
+    """Paginated response for extracted items."""
+    success: bool
+    message: str
+    items: List[ExtractedItemSchema]
+    pagination: PaginationMeta
+
+
+class ExtractedItemWithMatchesResponse(BaseModel):
+    """Extracted item with matched store products."""
+    success: bool
+    message: str
+    item: ExtractedItemSchema
+    matched_products: Optional[List[SimilarProduct]] = None

@@ -326,6 +326,73 @@ async def search_by_text(request: TextSearchRequest):
         raise HTTPException(status_code=500, detail=f"Text search error: {str(e)}")
 
 
+@router.get("/products/all", tags=["products"])
+async def get_all_products_dump():
+    """
+    Dump ALL store products with complete data.
+    
+    Returns all products with image, price, description, and all metadata.
+    Useful for frontend to get complete product catalog.
+    """
+    try:
+        vector_db = VectorDBService()
+        
+        # Get all products (with high limit to get everything)
+        all_products = []
+        offset = 0
+        batch_size = 1000
+        
+        while True:
+            products_batch = vector_db.get_all_products(limit=batch_size, offset=offset)
+            if not products_batch:
+                break
+            
+            all_products.extend(products_batch)
+            offset += batch_size
+            
+            # If we got fewer than batch_size, we've reached the end
+            if len(products_batch) < batch_size:
+                break
+        
+        # Convert to full product dictionaries with all fields
+        products_full = []
+        for product_data in all_products:
+            # Build complete product object with all available data
+            product_full = {
+                "product_id": product_data.get("product_id", product_data.get("id", "")),
+                "id": product_data.get("id", ""),
+                "name": product_data.get("name", "Unknown"),
+                "description": product_data.get("description") or product_data.get("metadata", {}).get("description", ""),
+                "brand": product_data.get("brand") or product_data.get("metadata", {}).get("brand"),
+                "price": product_data.get("price", 0.0),
+                "currency": product_data.get("currency", "INR"),
+                "image_url": product_data.get("image_url") or product_data.get("metadata", {}).get("image_url"),
+                "in_stock": product_data.get("in_stock", True),
+                "category": product_data.get("category") or product_data.get("metadata", {}).get("category"),
+                "subcategory": product_data.get("subcategory") or product_data.get("metadata", {}).get("subcategory"),
+                "colors": product_data.get("colors", []) or product_data.get("metadata", {}).get("colors", []),
+                "style_tags": product_data.get("style_tags", []) or product_data.get("metadata", {}).get("style_tags", []),
+            }
+            
+            # Add all other metadata fields
+            metadata = product_data.get("metadata", {})
+            for key, value in metadata.items():
+                if key not in product_full and value is not None:
+                    product_full[key] = value
+            
+            products_full.append(product_full)
+        
+        return {
+            "success": True,
+            "total": len(products_full),
+            "products": products_full
+        }
+    
+    except Exception as e:
+        logger.error(f"Error getting all products: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving products: {str(e)}")
+
+
 @router.get("/products", response_model=ProductsListResponse)
 async def get_products(
     limit: int = Query(20, ge=1, le=100),

@@ -58,6 +58,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db():
     """Initialize database tables."""
     try:
+        # Import all models to ensure they're registered with Base
+        from models.instagram_post import InstagramPost
+        from models.extracted_fashion_item import ExtractedFashionItem
+        
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables initialized successfully")

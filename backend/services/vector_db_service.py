@@ -93,7 +93,7 @@ class VectorDBService:
         Search for similar products.
         
         Args:
-            query_embedding: Query embedding vector
+            query_embedding: Query embedding vector (numpy array or list)
             limit: Maximum number of results
             filters: Optional filters (category, price_range, etc.)
             score_threshold: Minimum similarity score
@@ -102,9 +102,18 @@ class VectorDBService:
             List of similar products
         """
         try:
+            # Convert to list if numpy array
+            if isinstance(query_embedding, np.ndarray):
+                query_vector = query_embedding.tolist()
+            elif isinstance(query_embedding, list):
+                query_vector = query_embedding
+            else:
+                logger.error(f"Invalid embedding type: {type(query_embedding)}")
+                return []
+            
             search_results = self.client.search(
                 collection_name=settings.qdrant_collection_name,
-                query_vector=query_embedding.tolist(),
+                query_vector=query_vector,
                 limit=limit,
                 score_threshold=score_threshold,
                 query_filter=None  # Can add filter support here

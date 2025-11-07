@@ -8,12 +8,24 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+<<<<<<< Updated upstream
+=======
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/fashion_ai
+      - APIFY_TOKEN=${APIFY_TOKEN}
+>>>>>>> Stashed changes
     volumes:
       - ./uploads:/app/uploads
       - ./models:/app/models
       - ./logs:/app/logs
+<<<<<<< Updated upstream
     depends_on:
       - qdrant
+=======
+      - ./data:/app/data
+    depends_on:
+      - qdrant
+      - postgres
+>>>>>>> Stashed changes
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -23,6 +35,23 @@ services:
     volumes:
       - qdrant_storage:/qdrant/storage
 
+<<<<<<< Updated upstream
 volumes:
   qdrant_storage:
+=======
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=fashion_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  qdrant_storage:
+  postgres_data:
+>>>>>>> Stashed changes
 

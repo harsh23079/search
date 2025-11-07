@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSavedPosts, SavedPost, getProxiedImageUrl } from "@/lib/api";
-import { Loader2, Instagram, Calendar, User, Heart, MessageCircle, Hash, ExternalLink, X, FileText, RefreshCw } from "lucide-react";
+import { 
+  getSavedPosts, SavedPost, getProxiedImageUrl,
+  getExtractedItemsForPost, getExtractedItemWithMatches,
+  ExtractedItem, SimilarProduct, deletePost
+} from "@/lib/api";
+import { Loader2, Instagram, Calendar, User, Heart, MessageCircle, Hash, ExternalLink, X, FileText, RefreshCw, Package, TrendingUp, Trash2 } from "lucide-react";
 import { ScrapedPost } from "@/lib/api";
 
 export default function PostsPage() {
@@ -13,6 +17,14 @@ export default function PostsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
   const postsPerPage = 20;
+  
+  // Extracted items state
+  const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
+  const [extractedItemsLoading, setExtractedItemsLoading] = useState(false);
+  const [extractedItemsWithMatches, setExtractedItemsWithMatches] = useState<Map<string, SimilarProduct[]>>(new Map());
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadPosts();
@@ -266,17 +278,84 @@ export default function PostsPage() {
     return Array.from(new Map(comments.map(c => [c.text, c])).values()).slice(0, 10);
   };
 
-  const handleCardClick = (postId: string) => {
+  const handleCardClick = async (postId: string) => {
     setSelectedPostId(postId);
+    setExtractedItems([]);
+    setExtractedItemsWithMatches(new Map());
+    
+    // Fetch extracted items for this post
+    setExtractedItemsLoading(true);
+    try {
+      const response = await getExtractedItemsForPost(postId);
+      setExtractedItems(response.items || []);
+      
+      // Fetch similar products for each extracted item
+      const matchesMap = new Map<string, SimilarProduct[]>();
+      for (const item of response.items || []) {
+        try {
+          const itemResponse = await getExtractedItemWithMatches(item.id);
+          if (itemResponse.matched_products && itemResponse.matched_products.length > 0) {
+            // Get top 5 similar products
+            const top5 = itemResponse.matched_products
+              .sort((a, b) => b.similarity_score - a.similarity_score)
+              .slice(0, 5);
+            matchesMap.set(item.id, top5);
+          }
+        } catch (err) {
+          console.error(`Error fetching matches for item ${item.id}:`, err);
+        }
+      }
+      setExtractedItemsWithMatches(matchesMap);
+    } catch (err: any) {
+      console.error(`Error fetching extracted items for post ${postId}:`, err);
+      setExtractedItems([]);
+    } finally {
+      setExtractedItemsLoading(false);
+    }
   };
 
   const handleCloseModal = () => {
     setSelectedPostId(null);
+    setExtractedItems([]);
+    setExtractedItemsWithMatches(new Map());
   };
 
   const handleOpenInstagram = (postUrl?: string | null) => {
     if (!postUrl) return;
     window.open(postUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDeleteClick = (postId: string) => {
+    setPostToDelete(postId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!postToDelete) return;
+
+    setDeleting(true);
+    setShowDeleteConfirm(false);
+    
+    try {
+      await deletePost(postToDelete, true);
+      // Remove the post from the list
+      setPosts(posts.filter(p => p.id !== postToDelete));
+      // Close the modal
+      handleCloseModal();
+      // Reload posts to refresh the list
+      await loadPosts();
+    } catch (err: any) {
+      console.error(`Error deleting post ${postToDelete}:`, err);
+      alert(`Failed to delete post: ${err.message}`);
+    } finally {
+      setDeleting(false);
+      setPostToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setPostToDelete(null);
   };
 
   const totalPages = Math.ceil(totalPosts / postsPerPage);
@@ -532,101 +611,269 @@ export default function PostsPage() {
 
             <div className="flex h-full w-full flex-col gap-6 overflow-y-auto p-6 md:w-1/2">
               <div className="space-y-2 border-b pb-4">
-                {modalData.owner && (
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold">
-                      {modalData.owner.fullName || (modalData.owner.username ? `@${modalData.owner.username}` : 'Unknown')}
-                    </span>
-                    {modalData.owner.username && modalData.owner.fullName && (
-                      <span className="text-sm text-muted-foreground">@{modalData.owner.username}</span>
-                    )}
-                  </div>
-                )}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>{new Date(modalData.scrapedDate).toLocaleDateString()}</span>
-                    <span>•</span>
-                    <Instagram className="h-4 w-4" />
-                    <span className="capitalize">{selectedPost.platform || 'instagram'}</span>
-                  </div>
+                <h2 className="text-2xl font-bold">Extracted Items</h2>
+                <p className="text-sm text-muted-foreground">
+                  Fashion items extracted from this post
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Caption</p>
-                <p className="whitespace-pre-line text-base leading-relaxed text-foreground">{modalData.caption}</p>
-              </div>
-
-              {(modalData.stats.likes !== null || modalData.stats.comments !== null) && (
-                <div className="flex flex-wrap gap-6 text-base">
-                  {modalData.stats.likes !== null && (
-                    <div className="flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-red-500" />
-                      <span className="font-medium">{modalData.stats.likes.toLocaleString()}</span>
-                      <span className="text-sm text-muted-foreground">likes</span>
-                    </div>
-                  )}
-                  {modalData.stats.comments !== null && (
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="h-5 w-5 text-blue-500" />
-                      <span className="font-medium">{modalData.stats.comments.toLocaleString()}</span>
-                      <span className="text-sm text-muted-foreground">comments</span>
-                    </div>
-                  )}
+              {extractedItemsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-3 text-muted-foreground">Loading extracted items...</span>
                 </div>
-              )}
-
-              {modalData.hashtags.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hashtags</p>
-                  <div className="flex flex-wrap gap-2">
-                    {modalData.hashtags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-sm text-primary"
-                      >
-                        <Hash className="h-3.5 w-3.5" />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {modalData.comments.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Comments ({modalData.comments.length})
+              ) : extractedItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-foreground">No items extracted yet</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Extract items from this post to see similar products
                   </p>
-                  <div className="space-y-3 max-h-64 overflow-y-auto rounded-lg border bg-muted/30 p-3">
-                    {modalData.comments.map((comment, idx) => (
-                      <div key={idx} className="space-y-1">
-                        {comment.username && (
-                          <div className="flex items-center gap-2">
-                            <User className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm font-medium text-foreground">
-                              {comment.username}
-                            </span>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {extractedItems.map((item) => {
+                    const similarProducts = extractedItemsWithMatches.get(item.id) || [];
+                    
+                    return (
+                      <div key={item.id} className="space-y-4 border-b pb-6 last:border-b-0">
+                        {/* Extracted Item Info */}
+                        <div className="space-y-3">
+                          {/* Extracted Item Image - Use post image or first similar product image */}
+                          <div className="relative w-full h-48 rounded-lg overflow-hidden bg-muted">
+                            {(() => {
+                              // Try to get image from first similar product
+                              const firstProduct = similarProducts[0];
+                              if (firstProduct?.product_info?.image_url) {
+                                return (
+                                  <img
+                                    src={getProxiedImageUrl(firstProduct.product_info.image_url)}
+                                    alt={item.item_name || item.category}
+                                    className="w-full h-full object-cover"
+                                  />
+                                );
+                              }
+                              // Fallback to post image
+                              if (modalData.imageUrl) {
+                                return (
+                                  <img
+                                    src={getProxiedImageUrl(modalData.imageUrl)}
+                                    alt={item.item_name || item.category}
+                                    className="w-full h-full object-cover"
+                                  />
+                                );
+                              }
+                              return (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="h-12 w-12 text-muted-foreground" />
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-foreground">
+                              {item.item_name || item.category}
+                            </h3>
+                            {item.extraction_confidence && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                                {Math.round(item.extraction_confidence * 100)}% confidence
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                            {item.category && (
+                              <span className="px-2 py-1 rounded bg-muted">
+                                {item.category}
+                              </span>
+                            )}
+                            {item.subcategory && (
+                              <span className="px-2 py-1 rounded bg-muted">
+                                {item.subcategory}
+                              </span>
+                            )}
+                            {item.brand && (
+                              <span className="px-2 py-1 rounded bg-muted">
+                                {item.brand}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {item.colors && item.colors.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Colors:</span>
+                              <div className="flex gap-1">
+                                {item.colors.map((color, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-0.5 rounded text-xs bg-muted"
+                                  >
+                                    {color}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Similar Products */}
+                        {similarProducts.length > 0 ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-primary" />
+                              <h4 className="text-sm font-semibold text-foreground">
+                                Similar Products ({similarProducts.length})
+                              </h4>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 gap-3">
+                              {similarProducts.map((product) => {
+                                const matchPercentage = Math.round(product.similarity_score * 100);
+                                
+                                return (
+                                  <div
+                                    key={product.product_id}
+                                    className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                                  >
+                                    {product.product_info.image_url ? (
+                                      <img
+                                        src={getProxiedImageUrl(product.product_info.image_url)}
+                                        alt={product.product_info.name}
+                                        className="w-16 h-16 object-cover rounded"
+                                      />
+                                    ) : (
+                                      <div className="w-16 h-16 bg-muted rounded flex items-center justify-center">
+                                        <Package className="h-6 w-6 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm text-foreground truncate">
+                                        {product.product_info.name}
+                                      </p>
+                                      {product.product_info.brand && (
+                                        <p className="text-xs text-muted-foreground">
+                                          {product.product_info.brand}
+                                        </p>
+                                      )}
+                                      <p className="text-sm font-semibold text-primary mt-1">
+                                        {product.product_info.currency} {product.product_info.price.toLocaleString()}
+                                      </p>
+                                    </div>
+                                    
+                                    <div className="flex flex-col items-end gap-1">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-lg font-bold text-primary">
+                                          {matchPercentage}%
+                                        </span>
+                                        <TrendingUp className="h-4 w-4 text-primary" />
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">Match</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            No similar products found
                           </div>
                         )}
-                        <p className="text-sm text-foreground leading-relaxed pl-5">
-                          {comment.text}
-                        </p>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               )}
 
-              {modalData.postUrl && (
+              <div className="mt-auto flex gap-3">
+                {modalData.postUrl && (
+                  <button
+                    onClick={() => handleOpenInstagram(modalData.postUrl)}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    <ExternalLink className="h-5 w-5" />
+                    <span>View on Instagram</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => handleOpenInstagram(modalData.postUrl)}
-                  className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  onClick={() => selectedPost && handleDeleteClick(selectedPost.id)}
+                  disabled={deleting}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-destructive px-6 py-3 font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ExternalLink className="h-5 w-5" />
-                  <span>View on Instagram</span>
+                  {deleting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-5 w-5" />
+                  )}
+                  <span>{deleting ? 'Deleting...' : 'Delete Post'}</span>
                 </button>
-              )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+          onClick={handleDeleteCancel}
+        >
+          <div
+            className="relative w-full max-w-md rounded-lg bg-background shadow-2xl border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={handleDeleteCancel}
+              className="absolute top-4 right-4 rounded-full bg-muted p-1.5 text-muted-foreground transition-colors hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-primary"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                  <Trash2 className="h-6 w-6 text-destructive" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Delete Post</h3>
+                  <p className="text-sm text-muted-foreground">This action cannot be undone</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-foreground mb-6">
+                Are you sure you want to delete this post? This will also delete all extracted items for this post.
+              </p>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleDeleteCancel}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-lg border border-border bg-background text-foreground font-medium transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-lg bg-destructive text-destructive-foreground font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <span>Delete</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
