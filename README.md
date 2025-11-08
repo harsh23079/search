@@ -1,10 +1,10 @@
 # Fashion-AI Search Platform
-## Technical Documentation
 
 **Version:** 1.0  
 **Date:** January 2025  
-**Author:** [Your Name]  
 **Project Type:** Full-Stack Web Application with AI/ML Integration
+
+A multimodal fashion discovery platform that enables users to find fashion products using text queries or image uploads. The system integrates Instagram/Pinterest scraping, AI-powered object detection, and semantic search.
 
 ---
 
