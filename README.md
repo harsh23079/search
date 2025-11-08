@@ -284,7 +284,6 @@ graph TD
 #### 2. Text Search Flow
 
 ```mermaid
-graph TD
    graph TD
     A[Client Sends Text Query] --> B[POST /search/text]
     B --> C[Text Search Service - Parse Query - Extract Keywords - Build Filters]
