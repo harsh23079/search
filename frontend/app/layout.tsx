@@ -18,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning className="h-full overflow-hidden">
+      <body className={`${inter.className} overflow-hidden h-screen flex flex-col bg-background text-foreground`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -27,10 +27,12 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <CartProvider>
-            <Navigation />
-            <main className="container mx-auto min-h-screen px-4 py-8">
-              {children}
-            </main>
+            <div className="flex flex-col h-full overflow-hidden">
+              <Navigation />
+              <main className="container mx-auto flex-1 flex flex-col px-4 py-8 overflow-hidden min-h-0">
+                {children}
+              </main>
+            </div>
           </CartProvider>
         </ThemeProvider>
       </body>

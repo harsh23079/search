@@ -8,7 +8,11 @@ import { getAllProducts } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
 
-export function ExploreFeed() {
+interface ExploreFeedProps {
+  searchQuery?: string;
+}
+
+export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,9 +105,30 @@ export function ExploreFeed() {
     return Math.max(...allProducts.map((p) => p.price || 0), 0);
   }, [allProducts]);
 
-  // Filter products based on active filters
+  // Filter products based on active filters and search query
   const filteredProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    
     return allProducts.filter((product) => {
+      // Search query filter
+      if (query) {
+        const searchableText = [
+          product.name || "",
+          product.brand || "",
+          product.description || "",
+          product.category || "",
+          product.subcategory || "",
+          ...(product.colors || []),
+          ...(product.style_tags || []),
+        ]
+          .join(" ")
+          .toLowerCase();
+        
+        if (!searchableText.includes(query)) {
+          return false;
+        }
+      }
+
       // Category filter
       if (
         filters.categories.length > 0 &&
@@ -151,7 +176,7 @@ export function ExploreFeed() {
 
       return true;
     });
-  }, [allProducts, filters]);
+  }, [allProducts, filters, searchQuery]);
 
   if (loading) {
     return (
@@ -175,9 +200,9 @@ export function ExploreFeed() {
   }
 
   return (
-    <div className="flex gap-6">
+    <div className="flex h-full gap-6">
       {/* Filter Sidebar */}
-      <aside className="hidden lg:block w-64 shrink-0 self-start">
+      <aside className="hidden lg:block w-64 shrink-0 h-full overflow-y-auto">
         <ProductFilters
           filters={filters}
           onFiltersChange={setFilters}
@@ -190,9 +215,9 @@ export function ExploreFeed() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 space-y-4">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* Mobile Filters */}
-        <div className="lg:hidden">
+        <div className="lg:hidden shrink-0 mb-4">
           <ProductFilters
             filters={filters}
             onFiltersChange={setFilters}
@@ -204,21 +229,23 @@ export function ExploreFeed() {
           />
         </div>
 
-      {error && allProducts.length > 0 && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          Error loading more products: {error}
-        </div>
-      )}
+        {error && allProducts.length > 0 && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive shrink-0 mb-4">
+            Error loading more products: {error}
+          </div>
+        )}
 
         {/* Results count */}
-        {filteredProducts.length > 0 && (
-          <div className="flex items-center justify-between">
+        {(filteredProducts.length > 0 || searchQuery.trim() || hasActiveFilters) && (
+          <div className="flex items-center justify-between shrink-0 mb-4">
             <p className="text-sm text-muted-foreground">
-              {hasActiveFilters ? (
+              {searchQuery.trim() || hasActiveFilters ? (
                 <>
                   Showing <span className="font-semibold text-foreground">{filteredProducts.length}</span> of{" "}
-                  <span className="font-semibold text-foreground">{allProducts.length}</span> loaded products
-                  <span className="ml-2 text-xs">(filtered from {allProducts.length} total)</span>
+                  <span className="font-semibold text-foreground">{allProducts.length}</span> products
+                  {searchQuery.trim() && (
+                    <span className="ml-2 text-xs">(search: "{searchQuery}")</span>
+                  )}
                 </>
               ) : (
                 <>
@@ -226,7 +253,7 @@ export function ExploreFeed() {
                 </>
               )}
             </p>
-            {hasActiveFilters && (
+            {(hasActiveFilters || searchQuery.trim()) && (
               <button
                 onClick={() => {
                   setFilters({
@@ -246,32 +273,37 @@ export function ExploreFeed() {
           </div>
         )}
 
-        {filteredProducts.length === 0 && !loading ? (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <p className="text-muted-foreground">
-              {allProducts.length === 0
-                ? "No products found"
-                : "No products match your filters"}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+        {/* Scrollable Product Grid Container */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {filteredProducts.length === 0 && !loading ? (
+            <div className="flex min-h-[400px] items-center justify-center">
+              <p className="text-muted-foreground">
+                {allProducts.length === 0
+                  ? "No products found"
+                  : searchQuery.trim()
+                  ? `No products found matching "${searchQuery}"`
+                  : "No products match your filters"}
+              </p>
             </div>
-
-            {/* All products loaded */}
-            {hasActiveFilters && (
-              <div className="flex justify-center py-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing filtered results from {allProducts.length} total products
-                </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-4">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
               </div>
-            )}
-          </>
-        )}
+
+              {/* All products loaded */}
+              {hasActiveFilters && (
+                <div className="flex justify-center py-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing filtered results from {allProducts.length} total products
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
