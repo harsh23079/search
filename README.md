@@ -157,15 +157,12 @@ graph TD
 
 ```mermaid
 graph TD
-    A[User Visits Homepage] --> B[Load All Products<br/>GET /products/all]
-    B --> C[Display Products<br/>in Grid Layout]
-    
+    A[User Visits Homepage] --> B[Load All Products\nGET /products/all]
+    B --> C[Display Products\nin Grid Layout]
     C --> D1[Search Box]
     C --> D2[Filter Sidebar]
-    
-    D1 --> E[Filter Products<br/>(Client-side)]
-    D2 --> E[Filter Products<br/>(Client-side)]
-    
+    D1 --> E[Filter Products]
+    D2 --> E
     E --> F[Update Grid Display]
 
 ```
@@ -174,10 +171,15 @@ graph TD
 
 ```mermaid
 graph TD
-    A[User Uploads Image] --> B[Convert to File<br/>Create Preview]
-    B --> C[POST /search/similar<br/>(FormData)]
-    C --> D[Backend Processes<br/>- YOLO Detection<br/>- Generate Embeddings<br/>- Vector Search]
-    D --> E[Display Results<br/>with Match %]
+    A[User Uploads Image] --> B[Convert to File 
+    Create Preview]
+    B --> C[POST /search/similar]
+    C --> D[Backend Processes
+              - YOLO Detection
+    - Generate Embeddings
+    - Vector Search]
+    D --> E[Display Results 
+    with Match %]
 
 ```
 
@@ -185,8 +187,8 @@ graph TD
 
 ```mermaid
 graph TD
-    A[User Enters Text] --> B[POST /search/text<br/>{ query: "..."}]
-    B --> C[Backend Processes<br/>- Text Analysis<br/>- Semantic Search]
+    A[User Enters Text] --> B[POST /search/text]
+    B --> C[Backend Processes - Text Analysis - Semantic Search]
     C --> D[Display Results]
 ```
 
@@ -194,12 +196,12 @@ graph TD
 
 ```mermaid
 graph TD
-    A[User Enters URL(s)] --> B[Select Mode:<br/>- Single URL<br/>- Batch URLs]
-    B --> C[Set Options:<br/>- Post Limit<br/>- Save to DB]
-    C --> D[POST /scrape<br/>or /scrape/batch]
-    D --> E[Backend Calls<br/>Apify API]
-    E --> F[Process & Store<br/>Posts]
-    F --> G[Display Results<br/>in Grid]
+    A[User Enters URLs] --> B[Select Mode: Single URL or Batch URLs]
+    B --> C[Set Options: Post Limit, Save to DB]
+    C --> D[POST /scrape or /scrape/batch]
+    D --> E[Backend Calls Apify API]
+    E --> F[Process and Store Posts]
+    F --> G[Display Results in Grid]
 
 ```
 
@@ -270,24 +272,24 @@ backend/
 #### 1. Image Search Flow
 ```mermaid
 graph TD
-    A[Client Uploads Image] --> B[POST /search/similar<br/>(File Upload)]
-    B --> C[Validate Image<br/>Format & Size]
-    C --> D[Detection Service<br/>- Load YOLOv8<br/>- Detect Items<br/>- Extract Features]
-    D --> E[Embedding Service<br/>- Generate CLIP Embedding]
-    E --> F[Vector DB Service<br/>- Search Similar<br/>- Get Top K]
-    F --> G[Format Response<br/>- Add Match %<br/>- Include Metadata]
+    A[Client Uploads Image] --> B[POST /search/similar]
+    B --> C[Validate Image Format and Size]
+    C --> D[Detection Service - Load YOLOv8 - Detect Items - Extract Features]
+    D --> E[Embedding Service - Generate CLIP Embedding]
+    E --> F[Vector DB Service - Search Similar - Get Top K]
+    F --> G[Format Response - Add Match % - Include Metadata]
     G --> H[Return to Client]
-
 ```
 
 #### 2. Text Search Flow
 
 ```mermaid
 graph TD
-    A[Client Sends Text Query] --> B[POST /search/text<br/>{ query: "..."}]
-    B --> C[Text Search Service<br/>- Parse Query<br/>- Extract Keywords<br/>- Build Filters]
-    C --> D[Vector DB Service<br/>- Semantic Search<br/>- Filter by Category/Brand]
-    D --> E[Format & Return Results]
+   graph TD
+    A[Client Sends Text Query] --> B[POST /search/text]
+    B --> C[Text Search Service - Parse Query - Extract Keywords - Build Filters]
+    C --> D[Vector DB Service - Semantic Search - Filter by Category or Brand]
+    D --> E[Format and Return Results]
 
 ```
 
@@ -295,25 +297,24 @@ graph TD
 
 ```mermaid
 graph TD
-    A[Client Sends Scrape Request] --> B[POST /scrape<br/>{ url, limit }]
-    B --> C[Scraping Service<br/>- Validate URL<br/>- Determine Type (Profile / Hashtag)]
-    C --> D[Call Apify API<br/>- Instagram Scraper<br/>- Pinterest Scraper]
-    D --> E[Process Response<br/>- Parse Data<br/>- Extract Images<br/>- Store if needed]
+    A[Client Sends Scrape Request] --> B[POST /scrape ]
+    B --> C[Scraping Service - Validate URL - Determine Type]
+    C --> D[Call Apify API - Instagram Scraper - Pinterest Scraper]
+    D --> E[Process Response - Parse Data - Extract Images - Store if needed]
     E --> F[Return Posts to Client]
-
 ```
 
 #### 4. Extraction Flow
 
 ```mermaid
 graph TD
-    A[Client Requests Extraction] --> B[POST /extract/<br/>{ post_id }]
-    B --> C[Get Post from DB<br/>- Fetch Image URL]
-    C --> D[Download Image<br/>(via Proxy)]
-    D --> E[Detection Service<br/>- Detect Items<br/>- Extract Colors<br/>- Get Style Tags]
-    E --> F[Text Analysis<br/>- Parse Caption<br/>- Extract Keywords]
-    F --> G[Match to Products<br/>- Vector Search<br/>- Similarity Score]
-    G --> H[Return Extracted Items<br/>with Matches]
+    A[Client Requests Extraction] --> B[POST /extract post_id]
+    B --> C[Get Post from DB - Fetch Image URL]
+    C --> D[Download Image via Proxy]
+    D --> E[Detection Service - Detect Items - Extract Colors - Get Style Tags]
+    E --> F[Text Analysis - Parse Caption - Extract Keywords]
+    F --> G[Match to Products - Vector Search - Similarity Score]
+    G --> H[Return Extracted Items with Matches]
 
 ```
 
@@ -372,12 +373,12 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[User<br>Enters URL] --> B[Frontend<br>- Validate URL<br>- Send Request]
-    B -->|HTTP POST<br>JSON| C[Backend API<br>/scrape]
-    C --> D[Scraping Service<br>- Parse URL<br>- Determine Platform]
-    D -->|API Call| E[Apify API<br>- Instagram<br>- Pinterest]
-    E -->|Raw Data| F[Process & Store<br>- Parse JSON<br>- Extract Images<br>- Save to DB (if enabled)]
-    F -->|JSON Response| G[Frontend<br>- Display Grid<br>- Show Stats]
+    A[User Enters URL] --> B[Frontend - Validate URL - Send Request]
+    B -->|HTTP POST JSON| C[Backend API /scrape]
+    C --> D[Scraping Service - Parse URL - Determine Platform]
+    D -->|API Call| E[Apify API - Instagram - Pinterest]
+    E -->|Raw Data| F[Process & Store - Parse JSON - Extract Images - Save to DB if enabled]
+    F -->|JSON Response| G[Frontend - Display Grid - Show Stats]
 
     %% Styling
     classDef user fill:#2563EB,stroke:#1E3A8A,stroke-width:2px,color:#fff;
@@ -390,6 +391,7 @@ flowchart TD
     class B,G frontend;
     class C,D,F backend;
     class E api;
+
 
 ```
 
