@@ -141,197 +141,81 @@ frontend/
 
 #### 1. User Navigation Flow
 
-```
-User Opens App
-    │
-    ▼
-┌─────────────────┐
-│  Navigation Bar │
-└────────┬────────┘
-         │
-    ┌────┴────┬──────────┬──────────┬──────────┐
-    │         │          │          │          │
-    ▼         ▼          ▼          ▼          ▼
-┌────────┐ ┌──────┐ ┌────────┐ ┌──────┐ ┌──────┐
-│Explore │ │Search│ │ Scrape │ │Posts │ │ Cart │
-│ Feed   │ │      │ │        │ │      │ │      │
-└────────┘ └──────┘ └────────┘ └──────┘ └──────┘
+```mermaid
+graph TD
+    A[User Opens App] --> B[Navigation Bar]
+
+    B --> C1[Explore Feed]
+    B --> C2[Search]
+    B --> C3[Scrape]
+    B --> C4[Posts]
+    B --> C5[Cart]
+
 ```
 
 #### 2. Explore Feed Flow
 
-```
-User Visits Homepage
-    │
-    ▼
-┌─────────────────────┐
-│  Load All Products  │
-│  GET /products/all  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Display Products   │
-│  in Grid Layout     │
-└──────────┬──────────┘
-           │
-    ┌──────┴──────┐
-    │             │
-    ▼             ▼
-┌─────────┐  ┌──────────┐
-│ Search  │  │  Filter  │
-│  Box    │  │  Sidebar │
-└────┬────┘  └────┬─────┘
-     │            │
-     └─────┬──────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Filter Products    │
-│  (Client-side)      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Update Grid        │
-│  Display            │
-└─────────────────────┘
+```mermaid
+graph TD
+    A[User Visits Homepage] --> B[Load All Products<br/>GET /products/all]
+    B --> C[Display Products<br/>in Grid Layout]
+    
+    C --> D1[Search Box]
+    C --> D2[Filter Sidebar]
+    
+    D1 --> E[Filter Products<br/>(Client-side)]
+    D2 --> E[Filter Products<br/>(Client-side)]
+    
+    E --> F[Update Grid Display]
+
 ```
 
 #### 3. Search Flow (Image Upload)
 
-```
-User Uploads Image
-    │
-    ▼
-┌─────────────────────┐
-│  Convert to File    │
-│  Create Preview     │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  POST /search/      │
-│  similar            │
-│  (FormData)         │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Backend Processes  │
-│  - YOLO Detection   │
-│  - Generate Embed   │
-│  - Vector Search    │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Display Results    │
-│  with Match %       │
-└─────────────────────┘
+```mermaid
+graph TD
+    A[User Uploads Image] --> B[Convert to File<br/>Create Preview]
+    B --> C[POST /search/similar<br/>(FormData)]
+    C --> D[Backend Processes<br/>- YOLO Detection<br/>- Generate Embeddings<br/>- Vector Search]
+    D --> E[Display Results<br/>with Match %]
+
 ```
 
 #### 4. Search Flow (Text Query)
 
-```
-User Enters Text
-    │
-    ▼
-┌─────────────────────┐
-│  POST /search/text  │
-│  { query: "..." }   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Backend Processes   │
-│  - Text Analysis     │
-│  - Semantic Search   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Display Results    │
-└─────────────────────┘
+```mermaid
+graph TD
+    A[User Enters Text] --> B[POST /search/text<br/>{ query: "..."}]
+    B --> C[Backend Processes<br/>- Text Analysis<br/>- Semantic Search]
+    C --> D[Display Results]
 ```
 
 #### 5. Scraping Flow
 
-```
-User Enters URL(s)
-    │
-    ▼
-┌─────────────────────┐
-│  Select Mode:       │
-│  - Single URL       │
-│  - Batch URLs       │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Set Options:       │
-│  - Post Limit       │
-│  - Save to DB       │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  POST /scrape       │
-│  or /scrape/batch   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Backend Calls      │
-│  Apify API          │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Process & Store    │
-│  Posts              │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Display Results    │
-│  in Grid            │
-└─────────────────────┘
+```mermaid
+graph TD
+    A[User Enters URL(s)] --> B[Select Mode:<br/>- Single URL<br/>- Batch URLs]
+    B --> C[Set Options:<br/>- Post Limit<br/>- Save to DB]
+    C --> D[POST /scrape<br/>or /scrape/batch]
+    D --> E[Backend Calls<br/>Apify API]
+    E --> F[Process & Store<br/>Posts]
+    F --> G[Display Results<br/>in Grid]
+
 ```
 
 #### 6. Posts Management Flow
 
-```
-User Visits Posts Page
-    │
-    ▼
-┌─────────────────────┐
-│  GET /scraped-posts  │
-│  ?limit=20&offset=0  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Display Posts      │
-│  in Grid            │
-└──────────┬──────────┘
-           │
-    ┌─────┴─────┐
-    │           │
-    ▼           ▼
-┌────────┐  ┌──────────┐
-│  View  │  │  Actions │
-│ Details│  │  - Find  │
-│        │  │  Similar│
-│        │  │  - Delete│
-└───┬────┘  └────┬─────┘
-    │            │
-    ▼            ▼
-┌────────┐  ┌──────────┐
-│ Modal  │  │  Search  │
-│ with   │  │  Similar │
-│ Details│  │  Products│
-└────────┘  └──────────┘
+```mermaid
+graph TD
+    A[User Visits Posts Page] --> B[GET /scraped-posts<br/>?limit=20&offset=0]
+    B --> C[Display Posts<br/>in Grid]
+    
+    C --> D1[View Details]
+    C --> D2[Actions<br/>- Find Similar<br/>- Delete]
+    
+    D1 --> E1[Modal with Details]
+    D2 --> E2[Search Similar Products]
+
 ```
 
 ### State Management
@@ -384,227 +268,72 @@ backend/
 ### Backend Flow Diagram
 
 #### 1. Image Search Flow
+```mermaid
+graph TD
+    A[Client Uploads Image] --> B[POST /search/similar<br/>(File Upload)]
+    B --> C[Validate Image<br/>Format & Size]
+    C --> D[Detection Service<br/>- Load YOLOv8<br/>- Detect Items<br/>- Extract Features]
+    D --> E[Embedding Service<br/>- Generate CLIP Embedding]
+    E --> F[Vector DB Service<br/>- Search Similar<br/>- Get Top K]
+    F --> G[Format Response<br/>- Add Match %<br/>- Include Metadata]
+    G --> H[Return to Client]
 
-```
-Client Uploads Image
-    │
-    ▼
-┌─────────────────────┐
-│  POST /search/      │
-│  similar            │
-│  (File Upload)      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Validate Image     │
-│  Format & Size      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Detection Service  │
-│  - Load YOLOv8      │
-│  - Detect Items     │
-│  - Extract Features │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Embedding Service  │
-│  - Generate CLIP    │
-│    Embedding        │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Vector DB Service  │
-│  - Search Similar    │
-│  - Get Top K        │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Format Response    │
-│  - Add Match %      │
-│  - Include Metadata │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Return to Client   │
-└─────────────────────┘
 ```
 
 #### 2. Text Search Flow
 
-```
-Client Sends Text Query
-    │
-    ▼
-┌─────────────────────┐
-│  POST /search/text  │
-│  { query: "..." }   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Text Search        │
-│  Service            │
-│  - Parse Query      │
-│  - Extract Keywords │
-│  - Build Filters    │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Vector DB Service  │
-│  - Semantic Search  │
-│  - Filter by        │
-│    Category/Brand   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Format & Return    │
-│  Results            │
-└─────────────────────┘
+```mermaid
+graph TD
+    A[Client Sends Text Query] --> B[POST /search/text<br/>{ query: "..."}]
+    B --> C[Text Search Service<br/>- Parse Query<br/>- Extract Keywords<br/>- Build Filters]
+    C --> D[Vector DB Service<br/>- Semantic Search<br/>- Filter by Category/Brand]
+    D --> E[Format & Return Results]
+
 ```
 
 #### 3. Scraping Flow
 
-```
-Client Sends Scrape Request
-    │
-    ▼
-┌─────────────────────┐
-│  POST /scrape        │
-│  { url, limit }     │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Scraping Service   │
-│  - Validate URL      │
-│  - Determine Type   │
-│    (Profile/Hashtag)│
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Call Apify API     │
-│  - Instagram Scraper │
-│  - Pinterest Scraper │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Process Response   │
-│  - Parse Data        │
-│  - Extract Images    │
-│  - Store if needed   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Return Posts       │
-│  to Client          │
-└─────────────────────┘
+```mermaid
+graph TD
+    A[Client Sends Scrape Request] --> B[POST /scrape<br/>{ url, limit }]
+    B --> C[Scraping Service<br/>- Validate URL<br/>- Determine Type (Profile / Hashtag)]
+    C --> D[Call Apify API<br/>- Instagram Scraper<br/>- Pinterest Scraper]
+    D --> E[Process Response<br/>- Parse Data<br/>- Extract Images<br/>- Store if needed]
+    E --> F[Return Posts to Client]
+
 ```
 
 #### 4. Extraction Flow
 
-```
-Client Requests Extraction
-    │
-    ▼
-┌─────────────────────┐
-│  POST /extract/     │
-│  {post_id}          │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Get Post from DB   │
-│  - Fetch Image URL   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Download Image     │
-│  (via Proxy)        │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Detection Service  │
-│  - Detect Items      │
-│  - Extract Colors    │
-│  - Get Style Tags   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Text Analysis      │
-│  - Parse Caption     │
-│  - Extract Keywords │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Match to Products  │
-│  - Vector Search     │
-│  - Similarity Score  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Return Extracted   │
-│  Items with Matches │
-└─────────────────────┘
+```mermaid
+graph TD
+    A[Client Requests Extraction] --> B[POST /extract/<br/>{ post_id }]
+    B --> C[Get Post from DB<br/>- Fetch Image URL]
+    C --> D[Download Image<br/>(via Proxy)]
+    D --> E[Detection Service<br/>- Detect Items<br/>- Extract Colors<br/>- Get Style Tags]
+    E --> F[Text Analysis<br/>- Parse Caption<br/>- Extract Keywords]
+    F --> G[Match to Products<br/>- Vector Search<br/>- Similarity Score]
+    G --> H[Return Extracted Items<br/>with Matches]
+
 ```
 
 ### Request Processing Pipeline
 
-```
-HTTP Request
-    │
-    ▼
-┌─────────────────────┐
-│  FastAPI Router     │
-│  - Route Matching    │
-│  - Parameter Parsing │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Pydantic           │
-│  Validation         │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Service Layer      │
-│  - Business Logic    │
-│  - Data Processing   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Repository Layer   │
-│  - DB Operations     │
-│  - Data Access      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Response           │
-│  - Format Data       │
-│  - Error Handling    │
-└──────────┬──────────┘
-           │
-           ▼
-HTTP Response
+```mermaid
+flowchart TD
+    A[HTTP Request] --> B[FastAPI Router<br>• Route Matching<br>• Parameter Parsing]
+    B --> C[Pydantic Validation<br>• Schema Validation<br>• Type Checking]
+    C --> D[Service Layer<br>• Business Logic<br>• Data Processing<br>• Integrations]
+    D --> E[Repository Layer<br>• Database Access<br>• CRUD Operations<br>• Query Builders]
+    E --> F[Response Layer<br>• Data Formatting<br>• Error Handling<br>• API Response]
+    F --> G[HTTP Response]
+
+    %% Styling
+    classDef layer fill:#2563EB,stroke:#1E3A8A,stroke-width:2px,color:#fff;
+    classDef flow fill:#fff,stroke:#94A3B8,stroke-width:1px,color:#111;
+    class A,G flow;
+    class B,C,D,E,F layer;
+
 ```
 
 ---
@@ -613,121 +342,55 @@ HTTP Response
 
 ### Complete User Journey: Image Search
 
-```
-┌──────────┐
-│  User    │
-│  Uploads │
-│  Image   │
-└────┬─────┘
-     │
-     ▼
-┌─────────────────┐
-│  Frontend       │
-│  - Convert to   │
-│    File Object  │
-│  - Show Preview │
-└────┬────────────┘
-     │
-     │ HTTP POST
-     │ FormData
-     ▼
-┌─────────────────┐
-│  Backend API    │
-│  /search/similar│
-└────┬────────────┘
-     │
-     ├─────────────────┐
-     │                 │
-     ▼                 ▼
-┌──────────┐    ┌──────────────┐
-│ YOLOv8   │    │  CLIP        │
-│ Detection│    │  Embedding   │
-└────┬─────┘    └──────┬───────┘
-     │                 │
-     │                 │
-     └────────┬─────────┘
-              │
-              ▼
-     ┌──────────────┐
-     │  Qdrant      │
-     │  Vector DB   │
-     │  - Search    │
-     │  - Rank      │
-     └──────┬───────┘
-            │
-            ▼
-     ┌──────────────┐
-     │  Format      │
-     │  Results     │
-     └──────┬───────┘
-            │
-            │ JSON Response
-            ▼
-     ┌──────────────┐
-     │  Frontend    │
-     │  - Display   │
-     │  - Show %    │
-     └──────────────┘
+```mermaid
+flowchart TD
+    A[User<br>Uploads Image] --> B[Frontend<br>- Convert to File Object<br>- Show Preview]
+    B -->|HTTP POST<br>FormData| C[Backend API<br>/search/similar]
+
+    C --> D1[YOLOv8 Detection]
+    C --> D2[CLIP Embedding]
+
+    D1 --> E[Qdrant Vector DB<br>- Search<br>- Rank]
+    D2 --> E
+
+    E --> F[Format Results]
+    F -->|JSON Response| G[Frontend<br>- Display<br>- Show %]
+
+    %% Styling
+    classDef node fill:#2563EB,stroke:#1E3A8A,stroke-width:2px,color:#fff;
+    classDef process fill:#1E40AF,stroke:#1E3A8A,stroke-width:2px,color:#fff;
+    classDef db fill:#16A34A,stroke:#166534,stroke-width:2px,color:#fff;
+    classDef frontend fill:#0EA5E9,stroke:#0369A1,stroke-width:2px,color:#fff;
+
+    class A,G frontend;
+    class B,C,F process;
+    class D1,D2,E node;
+
 ```
 
 ### Complete User Journey: Scraping
 
-```
-┌──────────┐
-│  User    │
-│  Enters  │
-│  URL     │
-└────┬─────┘
-     │
-     ▼
-┌─────────────────┐
-│  Frontend       │
-│  - Validate URL │
-│  - Send Request │
-└────┬────────────┘
-     │
-     │ HTTP POST
-     │ JSON
-     ▼
-┌─────────────────┐
-│  Backend API    │
-│  /scrape        │
-└────┬────────────┘
-     │
-     ▼
-┌─────────────────┐
-│  Scraping       │
-│  Service        │
-│  - Parse URL    │
-│  - Determine    │
-│    Platform     │
-└────┬────────────┘
-     │
-     │ API Call
-     ▼
-┌─────────────────┐
-│  Apify API      │
-│  - Instagram    │
-│  - Pinterest    │
-└────┬────────────┘
-     │
-     │ Raw Data
-     ▼
-┌─────────────────┐
-│  Process & Store │
-│  - Parse JSON    │
-│  - Extract Images│
-│  - Save to DB    │
-│    (if enabled)  │
-└────┬──────────────┘
-     │
-     │ JSON Response
-     ▼
-┌─────────────────┐
-│  Frontend       │
-│  - Display Grid │
-│  - Show Stats   │
-└─────────────────┘
+```mermaid
+flowchart TD
+    A[User<br>Enters URL] --> B[Frontend<br>- Validate URL<br>- Send Request]
+    B -->|HTTP POST<br>JSON| C[Backend API<br>/scrape]
+    C --> D[Scraping Service<br>- Parse URL<br>- Determine Platform]
+    D -->|API Call| E[Apify API<br>- Instagram<br>- Pinterest]
+    E -->|Raw Data| F[Process & Store<br>- Parse JSON<br>- Extract Images<br>- Save to DB (if enabled)]
+    F -->|JSON Response| G[Frontend<br>- Display Grid<br>- Show Stats]
+
+    %% Styling
+    classDef user fill:#2563EB,stroke:#1E3A8A,stroke-width:2px,color:#fff;
+    classDef frontend fill:#0EA5E9,stroke:#0369A1,stroke-width:2px,color:#fff;
+    classDef backend fill:#1E40AF,stroke:#1E3A8A,stroke-width:2px,color:#fff;
+    classDef api fill:#16A34A,stroke:#166534,stroke-width:2px,color:#fff;
+    classDef process fill:#0F766E,stroke:#064E3B,stroke-width:2px,color:#fff;
+
+    class A user;
+    class B,G frontend;
+    class C,D,F backend;
+    class E api;
+
 ```
 
 ---
