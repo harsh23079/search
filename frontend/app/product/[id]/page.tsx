@@ -116,7 +116,7 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {product.metadata && (
+          {/* {product.metadata && (
             <div className="space-y-4 rounded-lg border p-4">
               {product.metadata.similarity_score !== undefined && (
                 <div>
@@ -147,7 +147,7 @@ export default function ProductDetailPage() {
                   </div>
                 )}
             </div>
-          )}
+          )} */}
 
           <div className="pt-4">
             {product && (
