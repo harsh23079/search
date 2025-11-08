@@ -36,7 +36,7 @@ export function Navigation() {
             className="flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary"
           >
             <Search className="h-4 w-4" />
-            <span>Search</span>
+            <span>Search Bot</span>
           </Link>
           <Link
             href="/scrape"

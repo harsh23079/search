@@ -451,8 +451,9 @@ export default function PostsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Header Section - Fixed */}
+      <div className="flex items-center justify-between shrink-0 mb-6">
         <div>
           <h1 className="text-3xl font-bold">Scraped Posts</h1>
           <p className="mt-2 text-muted-foreground">
@@ -474,23 +475,26 @@ export default function PostsPage() {
         </button>
       </div>
 
+      {/* Error Message - Fixed */}
       {error && (
-        <div className="p-4 border border-destructive rounded-lg bg-destructive/10">
+        <div className="p-4 border border-destructive rounded-lg bg-destructive/10 shrink-0 mb-4">
           <p className="text-destructive">{error}</p>
         </div>
       )}
 
-      {posts.length === 0 && !loading ? (
-        <div className="text-center py-16">
-          <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <p className="text-lg text-muted-foreground">No saved posts found</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Scrape some posts with "Save to database" enabled to see them here
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {posts.length === 0 && !loading ? (
+          <div className="text-center py-16">
+            <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <p className="text-lg text-muted-foreground">No saved posts found</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Scrape some posts with "Save to database" enabled to see them here
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
             {posts
               .filter((savedPost) => {
                 // Filter out posts without image data (either flat or nested)
@@ -646,32 +650,33 @@ export default function PostsPage() {
                 );
               }
             })}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-              >
-                Previous
-              </button>
-              <span className="px-4 py-2 text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-              >
-                Next
-              </button>
             </div>
-          )}
-        </>
-      )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8 mb-4">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
+                >
+                  Previous
+                </button>
+                <span className="px-4 py-2 text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Post Detail Modal */}
       {selectedPost && modalData && (

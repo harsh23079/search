@@ -401,9 +401,9 @@ export function InstagramScraper() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Mode Toggle */}
-      <div className="flex gap-2 border-b pb-4">
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Mode Toggle - Fixed */}
+      <div className="flex gap-2 border-b pb-4 shrink-0 mb-6">
         <button
           onClick={() => {
             setMode("single");
@@ -434,8 +434,8 @@ export function InstagramScraper() {
         </button>
       </div>
 
-      {/* Form */}
-      <div className="space-y-4 p-6 border rounded-lg bg-card">
+      {/* Form - Fixed */}
+      <div className="space-y-4 p-6 border rounded-lg bg-card shrink-0 mb-6">
         {mode === "single" ? (
           <div className="space-y-4">
             <div>
@@ -540,20 +540,22 @@ export function InstagramScraper() {
         </button>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="p-4 border border-destructive rounded-lg bg-destructive/10">
-          <div className="flex items-center gap-2 text-destructive">
-            <XCircle className="h-5 w-5" />
-            <span className="font-medium">Error</span>
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Error Display */}
+        {error && (
+          <div className="p-4 border border-destructive rounded-lg bg-destructive/10 mb-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              <span className="font-medium">Error</span>
+            </div>
+            <p className="mt-2 text-sm">{error}</p>
           </div>
-          <p className="mt-2 text-sm">{error}</p>
-        </div>
-      )}
+        )}
 
-      {/* Results Display */}
-      {result && (
-        <div className="space-y-4">
+        {/* Results Display */}
+        {result && (
+        <div className="space-y-4 pb-4">
           <div className="p-4 border rounded-lg bg-muted/50">
             <div className="flex items-center gap-2 mb-2">
               {result.success ? (
@@ -922,7 +924,8 @@ export function InstagramScraper() {
             </div>
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
