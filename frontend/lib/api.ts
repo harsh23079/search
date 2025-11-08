@@ -107,6 +107,33 @@ export async function getProducts(limit?: number, offset?: number): Promise<Prod
   return [];
 }
 
+export async function getAllProducts(): Promise<Product[]> {
+  const url = `${BASE_URL}/products/all`;
+  
+  const response = await fetch(url, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get all products: ${error}`);
+  }
+
+  const data = await response.json();
+  
+  // Handle response with products array
+  if (data.products && Array.isArray(data.products)) {
+    return data.products.map(transformProduct);
+  }
+  
+  // Handle direct array response
+  if (Array.isArray(data)) {
+    return data.map(transformProduct);
+  }
+
+  return [];
+}
+
 // Get product by ID
 export async function getProductById(id: string): Promise<Product | null> {
   const response = await fetch(`${BASE_URL}/product/${id}`, {

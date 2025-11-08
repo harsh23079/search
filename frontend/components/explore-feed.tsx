@@ -1,21 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Product } from "@/types/product";
 import { ProductCard } from "./product-card";
 import { ProductFilters, FilterState } from "./product-filters";
-import { getProducts } from "@/lib/api";
+import { getAllProducts } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
-const ITEMS_PER_PAGE = 20;
 
 export function ExploreFeed() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     brands: [],
@@ -24,43 +20,25 @@ export function ExploreFeed() {
     minPrice: null,
     maxPrice: null,
   });
-  const observerTarget = useRef<HTMLDivElement>(null);
 
-  const loadProducts = useCallback(async (currentOffset: number, append: boolean = false) => {
+  const loadProducts = useCallback(async () => {
     try {
-      if (append) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
       setError(null);
       
-      const results = await getProducts(ITEMS_PER_PAGE, currentOffset);
+      const results = await getAllProducts();
       
-      if (append) {
-        setAllProducts((prev) => [...prev, ...results]);
-      } else {
-        setAllProducts(results);
-      }
-      
-      if (results.length < ITEMS_PER_PAGE) {
-        setHasMore(false);
-      } else {
-        setHasMore(true);
-      }
-      
-      setOffset(currentOffset + results.length);
+      setAllProducts(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load products");
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   }, []);
 
   // Initial load
   useEffect(() => {
-    loadProducts(0, false);
+    loadProducts();
   }, [loadProducts]);
 
   // Check if any filters are active
@@ -75,33 +53,7 @@ export function ExploreFeed() {
     );
   }, [filters]);
 
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    // Don't enable infinite scroll if filters are active
-    if (hasActiveFilters) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-          loadProducts(offset, true);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
-
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [offset, hasMore, loadingMore, loading, loadProducts, hasActiveFilters]);
+  // No infinite scroll needed since we load all products at once
 
   // Get unique values from all products
   const availableCategories = useMemo(() => {
@@ -310,25 +262,14 @@ export function ExploreFeed() {
               ))}
             </div>
 
-            {/* Loading indicator and sentinel for infinite scroll */}
-            <div ref={observerTarget} className="flex justify-center py-8">
-              {loadingMore && (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Loading more products...</span>
-                </div>
-              )}
-              {!hasMore && allProducts.length > 0 && !hasActiveFilters && (
+            {/* All products loaded */}
+            {hasActiveFilters && (
+              <div className="flex justify-center py-4">
                 <p className="text-sm text-muted-foreground">
-                  You've reached the end! No more products to load.
+                  Showing filtered results from {allProducts.length} total products
                 </p>
-              )}
-              {hasActiveFilters && (
-                <p className="text-sm text-muted-foreground">
-                  Clear filters to load more products
-                </p>
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
       </div>
