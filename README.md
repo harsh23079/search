@@ -41,35 +41,40 @@ Fashion-AI Search is a multimodal fashion discovery platform that enables users 
 ## System Architecture
 
 ### High-Level Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLIENT (Browser)                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │   Next.js    │  │   React      │  │  TypeScript    │    │
-│  │   Frontend   │  │   Components  │  │  Tailwind CSS  │    │
-│  └──────────────┘  └──────────────┘  └──────────────┘    │
-└───────────────────────┬─────────────────────────────────────┘
-                        │ HTTP/REST API
-                        │
-┌───────────────────────▼─────────────────────────────────────┐
-│              BACKEND (FastAPI)                               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   API Routes │  │   Services   │  │  Repositories│      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   YOLOv8     │  │   Embeddings │  │  Vector DB   │      │
-│  │   Detection  │  │   Service    │  │   Service    │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└───────────────────────┬─────────────────────────────────────┘
-                        │
-        ┌───────────────┼───────────────┐
-        │               │               │
-┌───────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
-│  PostgreSQL  │ │  Qdrant     │ │  Apify API  │
-│  Database    │ │  Vector DB  │ │  Scraper    │
-└──────────────┘ └─────────────┘ └─────────────┘
+```mermaid
+graph TD
+    %% === CLIENT SECTION ===
+    subgraph CLIENT["CLIENT (Browser)"]
+        subgraph F["Frontend Stack"]
+            A1[Next.js<br/>Frontend]
+            A2[React<br/>Components]
+            A3[TypeScript<br/>+ Tailwind CSS]
+        end
+    end
+    %% === BACKEND SECTION ===
+    subgraph BACKEND["BACKEND (FastAPI)"]
+        subgraph L1["Application Layer"]
+            B1[API Routes]
+            B2[Services]
+            B3[Repositories]
+        end
+        subgraph L2["AI/ML Layer"]
+            C1[YOLOv8<br/>Detection]
+            C2[Embeddings<br/>Service]
+            C3[Vector DB<br/>Service]
+        end
+    end
+    %% === DATABASES AND EXTERNAL SERVICES ===
+    subgraph STORAGE["Databases / External Integrations"]
+        D1[PostgreSQL<br/>Database]
+        D2[Qdrant<br/>Vector DB]
+        D3[Apify API<br/>Scraper]
+    end
+    %% === CONNECTIONS ===
+    F -->|"HTTP / REST API"| BACKEND
+    BACKEND --> L2
+    L2 --> STORAGE
+    BACKEND --> STORAGE
 ```
 
 ### Component Overview
