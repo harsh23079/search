@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Product } from "@/types/product";
 import { ProductCard } from "./product-card";
 import { ProductFilters, FilterState } from "./product-filters";
-import { getAllProducts } from "@/lib/api";
+import { getAllProducts, searchText } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
 
@@ -14,7 +14,9 @@ interface ExploreFeedProps {
 
 export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
@@ -45,6 +47,37 @@ export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
     loadProducts();
   }, [loadProducts]);
 
+  // Text search when searchQuery changes
+  useEffect(() => {
+    const performSearch = async () => {
+      const query = searchQuery.trim();
+      
+      if (!query) {
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
+
+      setSearching(true);
+      setError(null);
+      
+      try {
+        const results = await searchText({ query, limit: 100 });
+        setSearchResults(results);
+      } catch (err) {
+        console.error("Search error:", err);
+        setError(err instanceof Error ? err.message : "Search failed");
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    };
+
+    // Debounce search
+    const timeoutId = setTimeout(performSearch, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     return (
@@ -59,76 +92,62 @@ export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
 
   // No infinite scroll needed since we load all products at once
 
-  // Get unique values from all products
+  // Get unique values from products (use search results if searching, otherwise all products)
+  const productsForFilters = useMemo(() => {
+    return searchQuery.trim() ? searchResults : allProducts;
+  }, [searchQuery, searchResults, allProducts]);
+
   const availableCategories = useMemo(() => {
     const categories = new Set<string>();
-    allProducts.forEach((product) => {
+    productsForFilters.forEach((product) => {
       if (product.category) {
         categories.add(product.category);
       }
     });
     return Array.from(categories).sort();
-  }, [allProducts]);
+  }, [productsForFilters]);
 
   const availableBrands = useMemo(() => {
     const brands = new Set<string>();
-    allProducts.forEach((product) => {
+    productsForFilters.forEach((product) => {
       if (product.brand) {
         brands.add(product.brand);
       }
     });
     return Array.from(brands).sort();
-  }, [allProducts]);
+  }, [productsForFilters]);
 
   const availableColors = useMemo(() => {
     const colors = new Set<string>();
-    allProducts.forEach((product) => {
+    productsForFilters.forEach((product) => {
       if (product.colors && Array.isArray(product.colors)) {
         product.colors.forEach((color) => colors.add(color));
       }
     });
     return Array.from(colors).sort();
-  }, [allProducts]);
+  }, [productsForFilters]);
 
   const availableStyleTags = useMemo(() => {
     const tags = new Set<string>();
-    allProducts.forEach((product) => {
+    productsForFilters.forEach((product) => {
       if (product.style_tags && Array.isArray(product.style_tags)) {
         product.style_tags.forEach((tag) => tags.add(tag));
       }
     });
     return Array.from(tags).sort();
-  }, [allProducts]);
+  }, [productsForFilters]);
 
-  // Get max price from all products
+  // Get max price from products
   const maxPriceValue = useMemo(() => {
-    return Math.max(...allProducts.map((p) => p.price || 0), 0);
-  }, [allProducts]);
+    return Math.max(...productsForFilters.map((p) => p.price || 0), 0);
+  }, [productsForFilters]);
 
-  // Filter products based on active filters and search query
+  // Filter products based on active filters
+  // Use search results if searchQuery exists, otherwise use allProducts
   const filteredProducts = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const productsToFilter = searchQuery.trim() ? searchResults : allProducts;
     
-    return allProducts.filter((product) => {
-      // Search query filter
-      if (query) {
-        const searchableText = [
-          product.name || "",
-          product.brand || "",
-          product.description || "",
-          product.category || "",
-          product.subcategory || "",
-          ...(product.colors || []),
-          ...(product.style_tags || []),
-        ]
-          .join(" ")
-          .toLowerCase();
-        
-        if (!searchableText.includes(query)) {
-          return false;
-        }
-      }
-
+    return productsToFilter.filter((product) => {
       // Category filter
       if (
         filters.categories.length > 0 &&
@@ -176,9 +195,9 @@ export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
 
       return true;
     });
-  }, [allProducts, filters, searchQuery]);
+  }, [allProducts, searchResults, filters, searchQuery]);
 
-  if (loading) {
+  if (loading && !searchQuery.trim()) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -236,15 +255,21 @@ export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
         )}
 
         {/* Results count */}
-        {(filteredProducts.length > 0 || searchQuery.trim() || hasActiveFilters) && (
+        {(filteredProducts.length > 0 || searchQuery.trim() || hasActiveFilters || searching) && (
           <div className="flex items-center justify-between shrink-0 mb-4">
             <p className="text-sm text-muted-foreground">
-              {searchQuery.trim() || hasActiveFilters ? (
+              {searching ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching...
+                </span>
+              ) : searchQuery.trim() || hasActiveFilters ? (
                 <>
-                  Showing <span className="font-semibold text-foreground">{filteredProducts.length}</span> of{" "}
-                  <span className="font-semibold text-foreground">{allProducts.length}</span> products
-                  {searchQuery.trim() && (
-                    <span className="ml-2 text-xs">(search: "{searchQuery}")</span>
+                  Showing <span className="font-semibold text-foreground">{filteredProducts.length}</span>{" "}
+                  {searchQuery.trim() ? (
+                    <>search result{filteredProducts.length !== 1 ? 's' : ''} for "{searchQuery}"</>
+                  ) : (
+                    <>of <span className="font-semibold text-foreground">{allProducts.length}</span> products</>
                   )}
                 </>
               ) : (
@@ -253,7 +278,7 @@ export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
                 </>
               )}
             </p>
-            {(hasActiveFilters || searchQuery.trim()) && (
+            {(hasActiveFilters || searchQuery.trim()) && !searching && (
               <button
                 onClick={() => {
                   setFilters({
@@ -275,7 +300,14 @@ export function ExploreFeed({ searchQuery = "" }: ExploreFeedProps) {
 
         {/* Scrollable Product Grid Container */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          {filteredProducts.length === 0 && !loading ? (
+          {searching ? (
+            <div className="flex min-h-[400px] items-center justify-center">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Searching products...</p>
+              </div>
+            </div>
+          ) : filteredProducts.length === 0 && !loading ? (
             <div className="flex min-h-[400px] items-center justify-center">
               <p className="text-muted-foreground">
                 {allProducts.length === 0
